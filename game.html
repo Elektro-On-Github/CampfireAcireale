@@ -1,0 +1,1662 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THE BACKROOMS</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:#000}
+
+#game-wrapper{
+  width:100%;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  font-family:'Courier New',monospace;
+}
+
+#game-area{
+  flex:1;
+  position:relative;
+  min-height:0;
+  background:#1a1812;
+}
+
+#canvas{
+  position:absolute;
+  top:0;left:0;
+  width:100%;
+  height:100%;
+}
+
+#hud{
+  position:absolute;
+  top:15px;
+  left:15px;
+  z-index:10;
+  color:#8a8060;
+  font-size:11px;
+  text-shadow:0 0 10px rgba(0,0,0,.8);
+}
+
+#level-display{
+  font-size:14px;
+  color:#a09070;
+  margin-bottom:10px;
+  letter-spacing:3px;
+}
+
+.bar-container{
+  margin-bottom:8px;
+}
+
+.bar-label{
+  font-size:9px;
+  color:#6a6850;
+  margin-bottom:3px;
+  letter-spacing:1px;
+}
+
+.bar{
+  width:120px;
+  height:6px;
+  background:#2a2820;
+  border:1px solid #4a4830;
+}
+
+#sanity-fill{
+  height:100%;
+  background:#8a8a50;
+  width:100%;
+  transition:width .2s;
+}
+
+#stamina-fill{
+  height:100%;
+  background:#5080a0;
+  width:100%;
+  transition:width .1s;
+}
+
+#controls-hint{
+  position:absolute;
+  bottom:15px;
+  left:15px;
+  color:#5a5840;
+  font-size:10px;
+  z-index:10;
+  line-height:1.6;
+}
+
+#monster-alert{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  color:#6a4a3a;
+  font-size:18px;
+  font-weight:bold;
+  text-shadow:0 0 30px rgba(100,60,40,.8);
+  opacity:0;
+  transition:opacity .3s;
+  pointer-events:none;
+  z-index:10;
+  letter-spacing:4px;
+  text-align:center;
+}
+
+#monster-alert.visible{opacity:1}
+
+#minimap{
+  position:absolute;
+  top:15px;
+  right:15px;
+  border:1px solid #4a4830;
+  background:#1a1810;
+  z-index:10;
+  opacity:.85;
+}
+
+#sprint-indicator{
+  position:absolute;
+  bottom:15px;
+  right:15px;
+  color:#5080a0;
+  font-size:10px;
+  opacity:0;
+  transition:opacity .2s;
+  z-index:10;
+  letter-spacing:2px;
+}
+
+#sprint-indicator.active{
+  opacity:1;
+  color:#80b0d0;
+  text-shadow:0 0 10px rgba(80,160,200,.5);
+}
+
+#chat{
+  height:100px;
+  background:#12110a;
+  border-top:1px solid #3a3820;
+  display:flex;
+  flex-direction:column;
+}
+
+#chat-header{
+  padding:5px 12px;
+  background:#0a0908;
+  color:#5a5840;
+  font-size:9px;
+  letter-spacing:2px;
+  border-bottom:1px solid #2a2820;
+}
+
+#chat-messages{
+  flex:1;
+  overflow-y:auto;
+  padding:8px 12px;
+  font-size:10px;
+}
+
+#chat-messages::-webkit-scrollbar{width:3px}
+#chat-messages::-webkit-scrollbar-thumb{background:#3a3820}
+
+.chat-msg{
+  margin-bottom:5px;
+  color:#7a7860;
+  animation:fadeIn .5s;
+}
+.chat-msg.danger{color:#8a5a4a}
+
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+.screen{
+  position:fixed;
+  top:0;left:0;
+  width:100%;height:100%;
+  background:#0a0908;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  z-index:100;
+  text-align:center;
+  padding:20px;
+}
+
+.screen.hidden{display:none}
+
+.screen h1{
+  color:#a09060;
+  font-size:38px;
+  letter-spacing:10px;
+  margin-bottom:10px;
+  font-weight:normal;
+  text-shadow:0 0 30px rgba(160,140,80,.3);
+}
+
+.screen h2{
+  color:#6a6050;
+  font-size:13px;
+  letter-spacing:5px;
+  margin-bottom:35px;
+  font-weight:normal;
+}
+
+.screen p{
+  color:#6a6850;
+  font-size:12px;
+  line-height:2;
+  max-width:480px;
+  margin-bottom:20px;
+}
+
+.screen .controls{
+  color:#4a4830;
+  font-size:10px;
+  line-height:2;
+  margin-bottom:25px;
+}
+
+.btn{
+  background:#2a2820;
+  border:1px solid #4a4830;
+  color:#9a9870;
+  padding:14px 45px;
+  font:inherit;
+  font-size:13px;
+  letter-spacing:4px;
+  cursor:pointer;
+  transition:all .2s;
+}
+
+.btn:hover{
+  background:#3a3830;
+  color:#bab890;
+  border-color:#5a5840;
+}
+
+#stats{
+  color:#5a5840;
+  font-size:10px;
+  margin:18px 0;
+  line-height:1.8;
+}
+
+.warning-text{
+  color:#7a4a3a;
+  font-size:10px;
+  margin-top:18px;
+  font-style:italic;
+}
+</style>
+</head>
+<body>
+
+<!-- INTRO -->
+<div id="intro-screen" class="screen">
+  <h1>BACKROOMS</h1>
+  <h2>LEVEL 0</h2>
+  <p>
+    Hai attraversato la realtà.<br>
+    Corridoi infiniti. Luci fluorescenti. Moquette umida.<br>
+    Trova la porta d'uscita. Esci prima che ti trovi.
+  </p>
+  <div class="controls">
+    <strong>WASD</strong> o <strong>FRECCE</strong> — Cammina<br>
+    <strong>SHIFT</strong> — Sprint (consuma stamina)<br>
+    <strong>E</strong> — Apri porte<br>
+    Trova la <span style="color:#5a9a6a">PORTA EXIT</span> per uscire
+  </div>
+  <button class="btn" id="start-btn">ENTRA</button>
+  <div class="warning-text">Non sei solo qui dentro.</div>
+</div>
+
+<!-- GAME OVER -->
+<div id="gameover-screen" class="screen hidden">
+  <h1 style="color:#6a3a2a">CATTURATO</h1>
+  <p id="death-text"></p>
+  <div id="stats"></div>
+  <button class="btn" id="retry-btn">RIPROVA</button>
+</div>
+
+<!-- WIN -->
+<div id="win-screen" class="screen hidden">
+  <h1 style="color:#5a8a5a">USCITO</h1>
+  <h2>HAI TROVATO L'USCITA</h2>
+  <p id="win-text"></p>
+  <div id="stats-win"></div>
+  <button class="btn" id="playagain-btn">LIVELLO SUCCESSIVO</button>
+</div>
+
+<!-- GAME -->
+<div id="game-wrapper">
+  <div id="game-area">
+    <canvas id="canvas"></canvas>
+    <canvas id="minimap" width="160" height="160"></canvas>
+    
+    <div id="hud">
+      <div id="level-display">LEVEL 0</div>
+      <div class="bar-container">
+        <div class="bar-label">SANITÀ</div>
+        <div class="bar"><div id="sanity-fill"></div></div>
+      </div>
+      <div class="bar-container">
+        <div class="bar-label">STAMINA</div>
+        <div class="bar"><div id="stamina-fill"></div></div>
+      </div>
+    </div>
+    
+    <div id="controls-hint">
+      WASD: cammina | SHIFT: sprint<br>
+      E: apri porte | Trova EXIT
+    </div>
+    
+    <div id="sprint-indicator">▶▶ SPRINT</div>
+    <div id="monster-alert">QUALCOSA SI AVVICINA</div>
+  </div>
+  
+  <div id="chat">
+    <div id="chat-header">█ SUSSURRI DALLE PARETI</div>
+    <div id="chat-messages"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// THE BACKROOMS — Dense Maze Version
+// ═══════════════════════════════════════════════════════════════════
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const minimap = document.getElementById('minimap');
+const minimapCtx = minimap.getContext('2d');
+
+// ═══════════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════════
+const TILE = 28;
+const MAZE_W = 71;
+const MAZE_H = 71;
+const VIEW_DIST = 9;
+
+// Tile types
+const WALL = 0;
+const FLOOR = 1;
+const DOOR = 2;      // Porte normali tra stanze
+const EXIT = 3;      // Uscita finale
+const DOOR_OPEN = 4; // Porta aperta
+
+// Colors
+const COL = {
+  floor: '#b8a845',
+  floorDark: '#a09035',
+  floorPattern: '#a89838',
+  wall: '#c9b858',
+  wallDark: '#a89838',
+  wallTop: '#d8c868',
+  wallLine: '#8a7a28',
+  light: '#fffae0',
+  lightGlow: 'rgba(255,250,200,0.12)',
+  door: '#6a5030',
+  doorFrame: '#4a3020',
+  doorHandle: '#8a7050',
+  exit: '#2a6a3a',
+  exitGlow: 'rgba(50,150,70,0.4)',
+  exitLight: '#4aba5a',
+  fog: '#1a1810'
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════════════════════════
+let maze = [];
+let rooms = [];
+let doors = [];
+let player = {
+  x: 0, y: 0,
+  sanity: 100,
+  stamina: 100,
+  maxStamina: 100,
+  steps: 0,
+  dir: 0,        // 0=down, 1=up, 2=left, 3=right
+  frame: 0,
+  moving: false,
+  sprinting: false
+};
+let monster = {
+  x: 0, y: 0,
+  path: [], pathIdx: 0,
+  visible: false, lastSeen: 0,
+  frame: 0
+};
+let exitPos = { x: 0, y: 0 };
+let keys = {};
+let gameRunning = false;
+let gameTime = 0;
+let gameStartTime = 0;
+let chatTimer = 0;
+let pathTimer = 0;
+let level = 0;
+let lightFlicker = 1;
+let animTime = 0;
+
+// ═══════════════════════════════════════════════════════════════════
+// RESIZE
+// ═══════════════════════════════════════════════════════════════════
+function resize() {
+  const area = document.getElementById('game-area');
+  if (area) {
+    canvas.width = area.clientWidth || 800;
+    canvas.height = area.clientHeight || 600;
+  }
+}
+window.addEventListener('resize', resize);
+
+// ═══════════════════════════════════════════════════════════════════
+// DENSE BACKROOMS MAZE GENERATION
+// ═══════════════════════════════════════════════════════════════════
+function generateMaze() {
+  maze = [];
+  rooms = [];
+  doors = [];
+  
+  // Fill with walls
+  for (let y = 0; y < MAZE_H; y++) {
+    maze[y] = [];
+    for (let x = 0; x < MAZE_W; x++) {
+      maze[y][x] = WALL;
+    }
+  }
+  
+  // Generate many rooms of varying sizes
+  const numRooms = 35 + Math.floor(Math.random() * 20);
+  
+  for (let attempt = 0; attempt < numRooms * 3; attempt++) {
+    // Random room size - mix of large, medium, small
+    let roomW, roomH;
+    const sizeRoll = Math.random();
+    
+    if (sizeRoll < 0.2) {
+      // Large room
+      roomW = 8 + Math.floor(Math.random() * 6);
+      roomH = 8 + Math.floor(Math.random() * 6);
+    } else if (sizeRoll < 0.5) {
+      // Medium room
+      roomW = 5 + Math.floor(Math.random() * 4);
+      roomH = 5 + Math.floor(Math.random() * 4);
+    } else {
+      // Small room
+      roomW = 3 + Math.floor(Math.random() * 3);
+      roomH = 3 + Math.floor(Math.random() * 3);
+    }
+    
+    const roomX = 2 + Math.floor(Math.random() * (MAZE_W - roomW - 4));
+    const roomY = 2 + Math.floor(Math.random() * (MAZE_H - roomH - 4));
+    
+    // Check overlap with small margin
+    let overlap = false;
+    for (const room of rooms) {
+      if (roomX < room.x + room.w + 1 && roomX + roomW + 1 > room.x &&
+          roomY < room.y + room.h + 1 && roomY + roomH + 1 > room.y) {
+        overlap = true;
+        break;
+      }
+    }
+    
+    if (!overlap && rooms.length < numRooms) {
+      rooms.push({ x: roomX, y: roomY, w: roomW, h: roomH });
+      
+      // Carve room
+      for (let y = roomY; y < roomY + roomH; y++) {
+        for (let x = roomX; x < roomX + roomW; x++) {
+          if (y > 0 && y < MAZE_H - 1 && x > 0 && x < MAZE_W - 1) {
+            maze[y][x] = FLOOR;
+          }
+        }
+      }
+    }
+  }
+  
+  // Connect rooms with corridors of varying width
+  for (let i = 0; i < rooms.length; i++) {
+    // Connect to nearest rooms
+    const connections = Math.min(3, rooms.length - 1);
+    const sorted = [...rooms].filter((_, idx) => idx !== i)
+      .sort((a, b) => {
+        const distA = Math.abs(a.x - rooms[i].x) + Math.abs(a.y - rooms[i].y);
+        const distB = Math.abs(b.x - rooms[i].x) + Math.abs(b.y - rooms[i].y);
+        return distA - distB;
+      });
+    
+    for (let j = 0; j < connections; j++) {
+      if (sorted[j]) {
+        const roomA = rooms[i];
+        const roomB = sorted[j];
+        
+        const startX = Math.floor(roomA.x + roomA.w / 2);
+        const startY = Math.floor(roomA.y + roomA.h / 2);
+        const endX = Math.floor(roomB.x + roomB.w / 2);
+        const endY = Math.floor(roomB.y + roomB.h / 2);
+        
+        // Random corridor width (1-2, mostly 1 for tighter feel)
+        const corridorW = Math.random() < 0.7 ? 1 : 2;
+        
+        // Random path type
+        const pathType = Math.random();
+        
+        if (pathType < 0.4) {
+          // L-shaped: horizontal then vertical
+          carveCorridorH(startX, endX, startY, corridorW);
+          carveCorridorV(startY, endY, endX, corridorW);
+          maybeAddDoor(endX, startY);
+        } else if (pathType < 0.8) {
+          // L-shaped: vertical then horizontal
+          carveCorridorV(startY, endY, startX, corridorW);
+          carveCorridorH(startX, endX, endY, corridorW);
+          maybeAddDoor(startX, endY);
+        } else {
+          // Zigzag
+          const midX = Math.floor((startX + endX) / 2);
+          const midY = Math.floor((startY + endY) / 2);
+          carveCorridorH(startX, midX, startY, corridorW);
+          carveCorridorV(startY, midY, midX, corridorW);
+          carveCorridorH(midX, endX, midY, corridorW);
+          carveCorridorV(midY, endY, endX, corridorW);
+        }
+      }
+    }
+  }
+  
+  // Add extra long corridors
+  for (let i = 0; i < 8; i++) {
+    const horizontal = Math.random() < 0.5;
+    const corridorW = 1;
+    
+    if (horizontal) {
+      const y = 3 + Math.floor(Math.random() * (MAZE_H - 6));
+      const x1 = 2 + Math.floor(Math.random() * 10);
+      const x2 = MAZE_W - 3 - Math.floor(Math.random() * 10);
+      carveCorridorH(x1, x2, y, corridorW);
+    } else {
+      const x = 3 + Math.floor(Math.random() * (MAZE_W - 6));
+      const y1 = 2 + Math.floor(Math.random() * 10);
+      const y2 = MAZE_H - 3 - Math.floor(Math.random() * 10);
+      carveCorridorV(y1, y2, x, corridorW);
+    }
+  }
+  
+  // Add doors between rooms
+  addDoorsToMaze();
+  
+  // Place player in first room
+  if (rooms.length > 0) {
+    player.x = rooms[0].x + rooms[0].w / 2;
+    player.y = rooms[0].y + rooms[0].h / 2;
+  } else {
+    player.x = 3;
+    player.y = 3;
+  }
+  
+  // Place EXIT in the farthest room from player
+  let maxDist = 0;
+  let exitRoom = rooms[rooms.length - 1];
+  
+  for (const room of rooms) {
+    const dist = Math.sqrt(
+      Math.pow(room.x + room.w/2 - player.x, 2) + 
+      Math.pow(room.y + room.h/2 - player.y, 2)
+    );
+    if (dist > maxDist) {
+      maxDist = dist;
+      exitRoom = room;
+    }
+  }
+  
+  // Place exit in corner of farthest room
+  exitPos.x = exitRoom.x + exitRoom.w - 2;
+  exitPos.y = exitRoom.y + exitRoom.h - 2;
+  
+  if (maze[exitPos.y] && maze[exitPos.y][exitPos.x] !== undefined) {
+    maze[exitPos.y][exitPos.x] = EXIT;
+  }
+  
+  // Place monster far from player but not near exit
+  let monsterRoom = null;
+  let monsterDist = 0;
+  
+  for (const room of rooms) {
+    const distFromPlayer = Math.sqrt(
+      Math.pow(room.x - player.x, 2) + Math.pow(room.y - player.y, 2)
+    );
+    const distFromExit = Math.sqrt(
+      Math.pow(room.x - exitPos.x, 2) + Math.pow(room.y - exitPos.y, 2)
+    );
+    
+    // Far from player, not too close to exit
+    if (distFromPlayer > monsterDist && distFromExit > 10) {
+      monsterDist = distFromPlayer;
+      monsterRoom = room;
+    }
+  }
+  
+  if (monsterRoom) {
+    monster.x = monsterRoom.x + monsterRoom.w / 2;
+    monster.y = monsterRoom.y + monsterRoom.h / 2;
+  } else {
+    monster.x = MAZE_W / 2;
+    monster.y = MAZE_H / 2;
+  }
+}
+
+function carveCorridorH(x1, x2, y, width) {
+  const minX = Math.min(x1, x2);
+  const maxX = Math.max(x1, x2);
+  
+  for (let x = minX; x <= maxX; x++) {
+    for (let dy = 0; dy < width; dy++) {
+      const cy = y + dy;
+      if (cy >= 1 && cy < MAZE_H - 1 && x >= 1 && x < MAZE_W - 1) {
+        if (maze[cy][x] === WALL) {
+          maze[cy][x] = FLOOR;
+        }
+      }
+    }
+  }
+}
+
+function carveCorridorV(y1, y2, x, width) {
+  const minY = Math.min(y1, y2);
+  const maxY = Math.max(y1, y2);
+  
+  for (let y = minY; y <= maxY; y++) {
+    for (let dx = 0; dx < width; dx++) {
+      const cx = x + dx;
+      if (y >= 1 && y < MAZE_H - 1 && cx >= 1 && cx < MAZE_W - 1) {
+        if (maze[y][cx] === WALL) {
+          maze[y][cx] = FLOOR;
+        }
+      }
+    }
+  }
+}
+
+function maybeAddDoor(x, y) {
+  if (Math.random() < 0.3) { // 30% chance for door
+    if (y > 1 && y < MAZE_H - 1 && x > 1 && x < MAZE_W - 1) {
+      if (maze[y][x] === FLOOR) {
+        // Check if it's a good doorway position (walls on 2 opposite sides)
+        const wallsH = (maze[y][x-1] === WALL ? 1 : 0) + (maze[y][x+1] === WALL ? 1 : 0);
+        const wallsV = (maze[y-1][x] === WALL ? 1 : 0) + (maze[y+1][x] === WALL ? 1 : 0);
+        
+        if ((wallsH === 2 && wallsV === 0) || (wallsV === 2 && wallsH === 0)) {
+          maze[y][x] = DOOR;
+          doors.push({x, y, open: false});
+        }
+      }
+    }
+  }
+}
+
+function addDoorsToMaze() {
+  // Add doors at corridor entrances to rooms
+  for (const room of rooms) {
+    // Check edges for potential door locations
+    const edges = [];
+    
+    // Top edge
+    for (let x = room.x; x < room.x + room.w; x++) {
+      if (room.y > 1 && maze[room.y - 1][x] === FLOOR) {
+        edges.push({x, y: room.y - 1, dir: 'v'});
+      }
+    }
+    // Bottom edge
+    for (let x = room.x; x < room.x + room.w; x++) {
+      if (room.y + room.h < MAZE_H - 1 && maze[room.y + room.h][x] === FLOOR) {
+        edges.push({x, y: room.y + room.h, dir: 'v'});
+      }
+    }
+    // Left edge
+    for (let y = room.y; y < room.y + room.h; y++) {
+      if (room.x > 1 && maze[y][room.x - 1] === FLOOR) {
+        edges.push({x: room.x - 1, y, dir: 'h'});
+      }
+    }
+    // Right edge
+    for (let y = room.y; y < room.y + room.h; y++) {
+      if (room.x + room.w < MAZE_W - 1 && maze[y][room.x + room.w] === FLOOR) {
+        edges.push({x: room.x + room.w, y, dir: 'h'});
+      }
+    }
+    
+    // Add doors to some edges
+    for (const edge of edges) {
+      if (Math.random() < 0.15 && maze[edge.y][edge.x] === FLOOR) {
+        maze[edge.y][edge.x] = DOOR;
+        doors.push({x: edge.x, y: edge.y, open: false});
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PATHFINDING
+// ═══════════════════════════════════════════════════════════════════
+function findPath(sx, sy, ex, ey) {
+  sx = Math.floor(sx) || 1;
+  sy = Math.floor(sy) || 1;
+  ex = Math.floor(ex) || 1;
+  ey = Math.floor(ey) || 1;
+  
+  sx = Math.max(0, Math.min(MAZE_W - 1, sx));
+  sy = Math.max(0, Math.min(MAZE_H - 1, sy));
+  ex = Math.max(0, Math.min(MAZE_W - 1, ex));
+  ey = Math.max(0, Math.min(MAZE_H - 1, ey));
+  
+  const key = (x, y) => x + ',' + y;
+  const open = [{ x: sx, y: sy, g: 0, f: 0, parent: null }];
+  const closed = new Set();
+  
+  let iterations = 0;
+  
+  while (open.length > 0 && iterations < 2000) {
+    iterations++;
+    
+    open.sort((a, b) => a.f - b.f);
+    const current = open.shift();
+    
+    if (current.x === ex && current.y === ey) {
+      const path = [];
+      let node = current;
+      while (node) {
+        path.unshift({ x: node.x + 0.5, y: node.y + 0.5 });
+        node = node.parent;
+      }
+      return path;
+    }
+    
+    closed.add(key(current.x, current.y));
+    
+    const neighbors = [
+      { x: current.x - 1, y: current.y },
+      { x: current.x + 1, y: current.y },
+      { x: current.x, y: current.y - 1 },
+      { x: current.x, y: current.y + 1 }
+    ];
+    
+    for (const n of neighbors) {
+      if (n.x < 0 || n.x >= MAZE_W || n.y < 0 || n.y >= MAZE_H) continue;
+      if (!maze[n.y]) continue;
+      
+      const tile = maze[n.y][n.x];
+      // Monster can go through doors
+      if (tile === WALL) continue;
+      if (closed.has(key(n.x, n.y))) continue;
+      
+      const g = current.g + 1;
+      const h = Math.abs(n.x - ex) + Math.abs(n.y - ey);
+      const f = g + h;
+      
+      const existing = open.find(o => o.x === n.x && o.y === n.y);
+      if (!existing) {
+        open.push({ x: n.x, y: n.y, g, f, parent: current });
+      } else if (g < existing.g) {
+        existing.g = g;
+        existing.f = f;
+        existing.parent = current;
+      }
+    }
+  }
+  
+  return [];
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// COLLISION & INTERACTION
+// ═══════════════════════════════════════════════════════════════════
+function canMove(x, y) {
+  if (isNaN(x) || isNaN(y)) return false;
+  
+  const r = 0.25;
+  const checks = [[x-r,y-r],[x+r,y-r],[x-r,y+r],[x+r,y+r]];
+  
+  for (const [cx, cy] of checks) {
+    const tx = Math.floor(cx);
+    const ty = Math.floor(cy);
+    
+    if (tx < 0 || tx >= MAZE_W || ty < 0 || ty >= MAZE_H) return false;
+    if (!maze[ty]) return false;
+    
+    const tile = maze[ty][tx];
+    if (tile === WALL) return false;
+    if (tile === DOOR) return false; // Closed doors block
+  }
+  
+  return true;
+}
+
+function tryOpenDoor() {
+  // Check adjacent tiles for doors
+  const checkDirs = [
+    [0, -1], [0, 1], [-1, 0], [1, 0],
+    [1, -1], [1, 1], [-1, -1], [-1, 1]
+  ];
+  
+  for (const [dx, dy] of checkDirs) {
+    const tx = Math.floor(player.x + dx * 0.8);
+    const ty = Math.floor(player.y + dy * 0.8);
+    
+    if (ty >= 0 && ty < MAZE_H && tx >= 0 && tx < MAZE_W) {
+      if (maze[ty] && maze[ty][tx] === DOOR) {
+        maze[ty][tx] = DOOR_OPEN;
+        addChat("*click* La porta si apre...", false);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function hasLOS(x1, y1, x2, y2) {
+  if (isNaN(x1) || isNaN(y1) || isNaN(x2) || isNaN(y2)) return false;
+  
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  
+  if (dist < 0.1) return true;
+  
+  const steps = Math.ceil(dist * 2.5);
+  if (steps <= 0) return true;
+  
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const x = Math.floor(x1 + dx * t);
+    const y = Math.floor(y1 + dy * t);
+    
+    if (isNaN(x) || isNaN(y)) return false;
+    if (x < 0 || x >= MAZE_W || y < 0 || y >= MAZE_H) return false;
+    if (!maze[y]) return false;
+    
+    const tile = maze[y][x];
+    if (tile === WALL || tile === DOOR) return false; // Closed doors block LOS
+  }
+  
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// DISTANCES
+// ═══════════════════════════════════════════════════════════════════
+function getMonsterDist() {
+  const dx = player.x - monster.x;
+  const dy = player.y - monster.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function getExitDist() {
+  const dx = player.x - exitPos.x;
+  const dy = player.y - exitPos.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CHAT
+// ═══════════════════════════════════════════════════════════════════
+const CHAT_CALM = [
+  "Questi corridoi non finiscono mai...",
+  "Le luci ronzano. Sempre.",
+  "La moquette è umida.",
+  "Hai sentito qualcosa?",
+  "Non fermarti.",
+  "Queste pareti... le hai già viste?",
+  "L'odore di muffa è ovunque.",
+  "Sembra tutto uguale.",
+  "Da quanto stai camminando?",
+  "Prova ad aprire le porte. E cerca.",
+  "L'uscita esiste. Da qualche parte."
+];
+
+const CHAT_NEAR = [
+  "C'è qualcosa qui dentro.",
+  "Lo senti? Si muove.",
+  "Non sei solo.",
+  "Ti sta cercando.",
+  "È più vicino.",
+  "Corri."
+];
+
+const CHAT_DANGER = [
+  "È QUI.",
+  "CORRI!",
+  "TI HA VISTO!",
+  "NON FERMARTI!",
+  "SCAPPA!"
+];
+
+const CHAT_EXIT = [
+  "Vedi qualcosa di diverso?",
+  "Una porta diversa... l'uscita!",
+  "Sei vicino. Corri.",
+  "La luce verde. Quella è la via d'uscita."
+];
+
+function addChat(text, danger) {
+  const container = document.getElementById('chat-messages');
+  const msg = document.createElement('div');
+  msg.className = 'chat-msg' + (danger ? ' danger' : '');
+  msg.textContent = text;
+  container.appendChild(msg);
+  container.scrollTop = container.scrollHeight;
+}
+
+function updateChat(dt) {
+  chatTimer += dt;
+  
+  const mDist = getMonsterDist();
+  const eDist = getExitDist();
+  
+  let interval = 12000;
+  let messages = CHAT_CALM;
+  let danger = false;
+  
+  if (eDist < 10) {
+    interval = 6000;
+    messages = CHAT_EXIT;
+  } else if (mDist < 5) {
+    interval = 2500;
+    messages = CHAT_DANGER;
+    danger = true;
+  } else if (mDist < 10) {
+    interval = 5000;
+    messages = CHAT_NEAR;
+    danger = true;
+  }
+  
+  if (chatTimer > interval) {
+    addChat(messages[Math.floor(Math.random() * messages.length)], danger);
+    chatTimer = 0;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// UPDATE
+// ═══════════════════════════════════════════════════════════════════
+function update(dt) {
+  if (!gameRunning) return;
+  
+  gameTime += dt;
+  animTime += dt;
+  
+  // Light flicker
+  if (Math.random() < 0.008) {
+    lightFlicker = 0.6 + Math.random() * 0.3;
+    setTimeout(() => { lightFlicker = 1; }, 80 + Math.random() * 150);
+  }
+  
+  // === PLAYER INPUT ===
+  let dx = 0, dy = 0;
+  
+  if (keys['w'] || keys['arrowup']) { dy = -1; player.dir = 1; }
+  if (keys['s'] || keys['arrowdown']) { dy = 1; player.dir = 0; }
+  if (keys['a'] || keys['arrowleft']) { dx = -1; player.dir = 2; }
+  if (keys['d'] || keys['arrowright']) { dx = 1; player.dir = 3; }
+  
+  // Open door
+  if (keys['e']) {
+    keys['e'] = false; // Prevent holding
+    tryOpenDoor();
+  }
+  
+  if (dx !== 0 && dy !== 0) {
+    dx *= 0.707;
+    dy *= 0.707;
+  }
+  
+  player.moving = (dx !== 0 || dy !== 0);
+  
+  // Speed & Sprint
+  let speed = 0.09;
+  const wantSprint = keys['shift'];
+  player.sprinting = false;
+  
+  if (wantSprint && player.stamina > 0 && player.moving) {
+    speed = 0.17;
+    player.stamina -= 0.4;
+    player.sprinting = true;
+    if (player.stamina < 0) player.stamina = 0;
+  } else if (!wantSprint || !player.moving) {
+    player.stamina = Math.min(player.maxStamina, player.stamina + 0.15);
+  }
+  
+  // Sanity effects
+  if (player.sanity < 25) speed *= 0.7;
+  
+  // Apply movement
+  const newX = player.x + dx * speed;
+  const newY = player.y + dy * speed;
+  
+  const oldX = player.x, oldY = player.y;
+  
+  if (canMove(newX, player.y)) player.x = newX;
+  if (canMove(player.x, newY)) player.y = newY;
+  
+  if (Math.abs(player.x - oldX) > 0.01 || Math.abs(player.y - oldY) > 0.01) {
+    player.steps++;
+  }
+  
+  // Animation
+  if (player.moving) {
+    if (animTime > (player.sprinting ? 80 : 120)) {
+      player.frame = (player.frame + 1) % 4;
+      animTime = 0;
+    }
+  } else {
+    player.frame = 0;
+  }
+  
+  // Sanity regen
+  player.sanity = Math.min(100, player.sanity + 0.02);
+  
+  // === MONSTER AI ===
+  pathTimer += dt;
+  
+  if (pathTimer > 350) {
+    monster.path = findPath(monster.x, monster.y, player.x, player.y);
+    monster.pathIdx = 0;
+    pathTimer = 0;
+  }
+  
+  if (monster.path.length > 0 && monster.pathIdx < monster.path.length) {
+    const target = monster.path[monster.pathIdx];
+    if (target) {
+      const mdx = target.x - monster.x;
+      const mdy = target.y - monster.y;
+      const dist = Math.sqrt(mdx * mdx + mdy * mdy);
+      
+      if (dist < 0.12) {
+        monster.pathIdx++;
+      } else if (dist > 0) {
+        const baseSpeed = 0.045 + (level * 0.008);
+        const timeBonus = (gameTime / 60000) * 0.012;
+        const mSpeed = baseSpeed + timeBonus;
+        
+        monster.x += (mdx / dist) * mSpeed;
+        monster.y += (mdy / dist) * mSpeed;
+      }
+    }
+  }
+  
+  // Monster animation
+  monster.frame = Math.floor(gameTime / 180) % 4;
+  
+  // Monster visibility
+  const mDist = getMonsterDist();
+  monster.visible = hasLOS(player.x, player.y, monster.x, monster.y) && mDist < VIEW_DIST + 2;
+  
+  if (monster.visible) {
+    monster.lastSeen = gameTime;
+    player.sanity -= 0.08;
+  }
+  
+  // === WIN/LOSE ===
+  if (mDist < 0.55) {
+    gameOver();
+    return;
+  }
+  
+  const tx = Math.floor(player.x);
+  const ty = Math.floor(player.y);
+  if (maze[ty] && maze[ty][tx] === EXIT) {
+    win();
+    return;
+  }
+  
+  // === UPDATE UI ===
+  document.getElementById('sanity-fill').style.width = Math.max(0, player.sanity) + '%';
+  document.getElementById('sanity-fill').style.background = 
+    player.sanity < 30 ? '#8a5a4a' : player.sanity < 60 ? '#8a8a50' : '#6a8a5a';
+  
+  document.getElementById('stamina-fill').style.width = Math.max(0, player.stamina) + '%';
+  document.getElementById('stamina-fill').style.background = 
+    player.stamina < 25 ? '#8a5050' : '#5080a0';
+  
+  const sprint = document.getElementById('sprint-indicator');
+  sprint.classList.toggle('active', player.sprinting);
+  
+  const alert = document.getElementById('monster-alert');
+  if (mDist < 7) {
+    alert.classList.add('visible');
+    alert.textContent = mDist < 4 ? 'È QUI!' : 'QUALCOSA SI AVVICINA';
+  } else {
+    alert.classList.remove('visible');
+  }
+  
+  updateChat(dt);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════════
+function render() {
+  const W = canvas.width;
+  const H = canvas.height;
+  if (W === 0 || H === 0) return;
+  
+  ctx.fillStyle = COL.fog;
+  ctx.fillRect(0, 0, W, H);
+  
+  const camX = player.x - W / TILE / 2;
+  const camY = player.y - H / TILE / 2;
+  
+  const startX = Math.floor(camX) - 1;
+  const startY = Math.floor(camY) - 1;
+  const endX = Math.ceil(camX + W / TILE) + 1;
+  const endY = Math.ceil(camY + H / TILE) + 1;
+  
+  // === DRAW TILES ===
+  for (let y = startY; y < endY; y++) {
+    for (let x = startX; x < endX; x++) {
+      if (y < 0 || y >= MAZE_H || x < 0 || x >= MAZE_W) continue;
+      if (!maze[y]) continue;
+      
+      const sx = (x - camX) * TILE;
+      const sy = (y - camY) * TILE;
+      
+      const dx = (x + 0.5) - player.x;
+      const dy = (y + 0.5) - player.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      
+      const visible = hasLOS(player.x, player.y, x + 0.5, y + 0.5);
+      let brightness = visible ? Math.max(0, 1 - dist / VIEW_DIST) : 0;
+      brightness *= lightFlicker;
+      
+      if (brightness <= 0) continue;
+      
+      ctx.globalAlpha = brightness;
+      
+      const tile = maze[y][x];
+      
+      if (tile === WALL) {
+        // Wall
+        ctx.fillStyle = COL.wallDark;
+        ctx.fillRect(sx, sy, TILE, TILE);
+        ctx.fillStyle = COL.wall;
+        ctx.fillRect(sx, sy, TILE, TILE - 2);
+        ctx.fillStyle = COL.wallTop;
+        ctx.fillRect(sx, sy, TILE, 3);
+        
+        // Panel lines
+        ctx.strokeStyle = COL.wallLine;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx + 2, sy + 5, TILE - 4, TILE - 8);
+        
+      } else if (tile === FLOOR || tile === DOOR_OPEN) {
+        // Floor
+        ctx.fillStyle = COL.floor;
+        ctx.fillRect(sx, sy, TILE, TILE);
+        
+        // Carpet pattern
+        ctx.fillStyle = COL.floorPattern;
+        for (let py = 0; py < TILE; py += 6) {
+          for (let px = 0; px < TILE; px += 6) {
+            if ((px + py + x * 3 + y * 5) % 12 < 3) {
+              ctx.fillRect(sx + px, sy + py, 3, 3);
+            }
+          }
+        }
+        
+        // Stains
+        if ((x * 13 + y * 29) % 31 === 0) {
+          ctx.fillStyle = COL.floorDark;
+          ctx.beginPath();
+          ctx.arc(sx + TILE/2, sy + TILE/2, 3 + (x % 4), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        
+        // Ceiling lights
+        if (x % 5 === 0 && y % 5 === 0) {
+          ctx.fillStyle = COL.lightGlow;
+          ctx.fillRect(sx - TILE/2, sy - TILE/2, TILE * 2, TILE * 2);
+          ctx.fillStyle = COL.light;
+          ctx.fillRect(sx + TILE/2 - 6, sy + TILE/2 - 2, 12, 4);
+        }
+        
+      } else if (tile === DOOR) {
+        // Closed door
+        ctx.fillStyle = COL.floor;
+        ctx.fillRect(sx, sy, TILE, TILE);
+        
+        // Door frame
+        ctx.fillStyle = COL.doorFrame;
+        ctx.fillRect(sx + 2, sy + 1, TILE - 4, TILE - 2);
+        
+        // Door
+        ctx.fillStyle = COL.door;
+        ctx.fillRect(sx + 4, sy + 3, TILE - 8, TILE - 5);
+        
+        // Handle
+        ctx.fillStyle = COL.doorHandle;
+        ctx.fillRect(sx + TILE - 10, sy + TILE/2 - 1, 3, 3);
+        
+        // "E" hint
+        ctx.fillStyle = 'rgba(255,255,200,0.4)';
+        ctx.font = 'bold 8px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('E', sx + TILE/2, sy + TILE - 4);
+        
+      } else if (tile === EXIT) {
+        // Exit door
+        ctx.fillStyle = COL.floor;
+        ctx.fillRect(sx, sy, TILE, TILE);
+        
+        // Glow
+        ctx.fillStyle = COL.exitGlow;
+        ctx.fillRect(sx - 8, sy - 8, TILE + 16, TILE + 16);
+        
+        // Frame
+        ctx.fillStyle = '#1a4a2a';
+        ctx.fillRect(sx + 1, sy + 1, TILE - 2, TILE - 2);
+        
+        // Door
+        ctx.fillStyle = COL.exit;
+        ctx.fillRect(sx + 3, sy + 3, TILE - 6, TILE - 6);
+        
+        // EXIT sign
+        ctx.fillStyle = COL.exitLight;
+        ctx.font = 'bold 9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = COL.exitLight;
+        ctx.fillText('EXIT', sx + TILE/2, sy + TILE/2);
+        ctx.shadowBlur = 0;
+      }
+    }
+  }
+  
+  ctx.globalAlpha = 1;
+  
+  // === DRAW MONSTER ===
+  const mDist = getMonsterDist();
+  const showM = monster.visible || (gameTime - monster.lastSeen < 400);
+  
+  if (showM) {
+    const mx = (monster.x - camX) * TILE;
+    const my = (monster.y - camY) * TILE;
+    
+    const alpha = monster.visible ? 1 : (400 - (gameTime - monster.lastSeen)) / 400;
+    ctx.globalAlpha = alpha;
+    
+    // Aura
+    ctx.fillStyle = 'rgba(15, 8, 5, 0.7)';
+    ctx.beginPath();
+    ctx.arc(mx, my, TILE * 1.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Body (tall, thin)
+    ctx.fillStyle = '#0a0503';
+    ctx.fillRect(mx - 8, my - 30, 16, 55);
+    
+    // Head
+    ctx.fillRect(mx - 7, my - 42, 14, 14);
+    
+    // Arms (wobble)
+    const wobble = Math.sin(gameTime / 120) * 6;
+    ctx.fillRect(mx - 22 + wobble, my - 20, 10, 40);
+    ctx.fillRect(mx + 12 - wobble, my - 20, 10, 40);
+    
+    // Claws
+    ctx.fillStyle = '#1a0a05';
+    ctx.fillRect(mx - 24 + wobble, my + 18, 8, 12);
+    ctx.fillRect(mx + 14 - wobble, my + 18, 8, 12);
+    
+    // Eyes
+    ctx.fillStyle = '#8a2010';
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#8a2010';
+    ctx.fillRect(mx - 4, my - 38, 3, 5);
+    ctx.fillRect(mx + 1, my - 38, 3, 5);
+    ctx.shadowBlur = 0;
+    
+    ctx.globalAlpha = 1;
+  }
+  
+  // === DRAW PLAYER (Human Avatar) ===
+  const px = (player.x - camX) * TILE;
+  const py = (player.y - camY) * TILE;
+  
+  drawPlayer(px, py);
+  
+  // === EFFECTS ===
+  
+  // Vignette
+  const grad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.min(W, H) * 0.65);
+  grad.addColorStop(0, 'rgba(0,0,0,0)');
+  grad.addColorStop(0.5, 'rgba(0,0,0,0.15)');
+  grad.addColorStop(1, 'rgba(26,24,16,0.92)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+  
+  // Low sanity
+  if (player.sanity < 35) {
+    ctx.fillStyle = `rgba(30, 15, 10, ${(35 - player.sanity) / 60})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+  
+  // Fluorescent tint
+  ctx.fillStyle = 'rgba(255, 250, 200, 0.015)';
+  ctx.fillRect(0, 0, W, H);
+  
+  renderMinimap();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// DRAW PLAYER (Detailed Human Avatar)
+// ═══════════════════════════════════════════════════════════════════
+function drawPlayer(px, py) {
+  const dir = player.dir; // 0=down, 1=up, 2=left, 3=right
+  const frame = player.frame;
+  const moving = player.moving;
+  const sprinting = player.sprinting;
+  
+  // Colors
+  const skin = '#d4a574';
+  const skinDark = '#b8956a';
+  const hair = '#3a2a1a';
+  const shirt = '#4a6080';
+  const shirtDark = '#3a4a60';
+  const pants = '#3a3a4a';
+  const pantsDark = '#2a2a3a';
+  const shoes = '#2a2020';
+  
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(px, py + 14, 8, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Leg animation offset
+  let legL = 0, legR = 0;
+  if (moving) {
+    const legCycle = Math.sin(frame * Math.PI / 2);
+    legL = legCycle * (sprinting ? 4 : 2);
+    legR = -legCycle * (sprinting ? 4 : 2);
+  }
+  
+  // === LEGS ===
+  ctx.fillStyle = pants;
+  // Left leg
+  ctx.fillRect(px - 5, py + 2 + legL, 4, 10);
+  // Right leg
+  ctx.fillRect(px + 1, py + 2 + legR, 4, 10);
+  
+  // Shoes
+  ctx.fillStyle = shoes;
+  ctx.fillRect(px - 6, py + 11 + legL, 5, 3);
+  ctx.fillRect(px + 1, py + 11 + legR, 5, 3);
+  
+  // === BODY ===
+  ctx.fillStyle = shirt;
+  ctx.fillRect(px - 7, py - 10, 14, 14);
+  
+  // Shirt detail
+  ctx.fillStyle = shirtDark;
+  if (dir === 0 || dir === 1) {
+    ctx.fillRect(px - 1, py - 8, 2, 10);
+  }
+  
+  // === ARMS ===
+  let armL = 0, armR = 0;
+  if (moving) {
+    armL = -legL * 0.6;
+    armR = -legR * 0.6;
+  }
+  
+  ctx.fillStyle = shirt;
+  // Left arm
+  ctx.fillRect(px - 10, py - 8 + armL, 4, 10);
+  // Right arm
+  ctx.fillRect(px + 6, py - 8 + armR, 4, 10);
+  
+  // Hands
+  ctx.fillStyle = skin;
+  ctx.fillRect(px - 10, py + 1 + armL, 4, 4);
+  ctx.fillRect(px + 6, py + 1 + armR, 4, 4);
+  
+  // === HEAD ===
+  // Neck
+  ctx.fillStyle = skinDark;
+  ctx.fillRect(px - 2, py - 12, 4, 3);
+  
+  // Head base
+  ctx.fillStyle = skin;
+  ctx.fillRect(px - 6, py - 24, 12, 13);
+  
+  // Hair
+  ctx.fillStyle = hair;
+  if (dir === 0) {
+    // Facing down - see face
+    ctx.fillRect(px - 6, py - 24, 12, 5);
+    ctx.fillRect(px - 7, py - 23, 2, 4);
+    ctx.fillRect(px + 5, py - 23, 2, 4);
+    
+    // Eyes
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(px - 4, py - 18, 3, 3);
+    ctx.fillRect(px + 1, py - 18, 3, 3);
+    ctx.fillStyle = '#2a2a2a';
+    ctx.fillRect(px - 3, py - 17, 2, 2);
+    ctx.fillRect(px + 2, py - 17, 2, 2);
+    
+  } else if (dir === 1) {
+    // Facing up - see back of head
+    ctx.fillRect(px - 6, py - 24, 12, 8);
+    ctx.fillRect(px - 7, py - 22, 14, 4);
+    
+  } else if (dir === 2) {
+    // Facing left
+    ctx.fillRect(px - 6, py - 24, 10, 5);
+    ctx.fillRect(px - 7, py - 23, 3, 5);
+    
+    // Eye
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(px - 4, py - 18, 3, 3);
+    ctx.fillStyle = '#2a2a2a';
+    ctx.fillRect(px - 4, py - 17, 2, 2);
+    
+    // Ear
+    ctx.fillStyle = skinDark;
+    ctx.fillRect(px + 5, py - 19, 2, 4);
+    
+  } else {
+    // Facing right
+    ctx.fillRect(px - 4, py - 24, 10, 5);
+    ctx.fillRect(px + 4, py - 23, 3, 5);
+    
+    // Eye
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(px + 1, py - 18, 3, 3);
+    ctx.fillStyle = '#2a2a2a';
+    ctx.fillRect(px + 2, py - 17, 2, 2);
+    
+    // Ear
+    ctx.fillStyle = skinDark;
+    ctx.fillRect(px - 7, py - 19, 2, 4);
+  }
+  
+  // Sprint effect
+  if (sprinting) {
+    ctx.fillStyle = 'rgba(100,150,200,0.15)';
+    ctx.beginPath();
+    ctx.arc(px, py - 5, 18, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MINIMAP
+// ═══════════════════════════════════════════════════════════════════
+function renderMinimap() {
+  const scale = 2.2;
+  const size = 160;
+  
+  minimapCtx.fillStyle = '#1a1810';
+  minimapCtx.fillRect(0, 0, size, size);
+  
+  const offX = size/2 - player.x * scale;
+  const offY = size/2 - player.y * scale;
+  
+  for (let y = 0; y < MAZE_H; y++) {
+    for (let x = 0; x < MAZE_W; x++) {
+      if (!maze[y]) continue;
+      
+      const sx = x * scale + offX;
+      const sy = y * scale + offY;
+      
+      if (sx < -scale || sx > size || sy < -scale || sy > size) continue;
+      
+      const tile = maze[y][x];
+      
+      if (tile === WALL) {
+        minimapCtx.fillStyle = '#3a3820';
+      } else if (tile === EXIT) {
+        minimapCtx.fillStyle = '#4a9a5a';
+      } else if (tile === DOOR) {
+        minimapCtx.fillStyle = '#6a5030';
+      } else {
+        minimapCtx.fillStyle = '#7a7850';
+      }
+      
+      minimapCtx.fillRect(sx, sy, scale, scale);
+    }
+  }
+  
+  // Exit marker
+  const ex = exitPos.x * scale + offX;
+  const ey = exitPos.y * scale + offY;
+  minimapCtx.strokeStyle = '#6aca7a';
+  minimapCtx.lineWidth = 1;
+  minimapCtx.strokeRect(ex - 3, ey - 3, 7, 7);
+  
+  // Player
+  minimapCtx.fillStyle = '#80c090';
+  minimapCtx.beginPath();
+  minimapCtx.arc(size/2, size/2, 3, 0, Math.PI * 2);
+  minimapCtx.fill();
+  
+  // Direction indicator
+  const dirAngles = [Math.PI/2, -Math.PI/2, Math.PI, 0]; // down, up, left, right
+  const angle = dirAngles[player.dir];
+  minimapCtx.strokeStyle = '#80c090';
+  minimapCtx.lineWidth = 2;
+  minimapCtx.beginPath();
+  minimapCtx.moveTo(size/2, size/2);
+  minimapCtx.lineTo(size/2 + Math.cos(angle) * 6, size/2 + Math.sin(angle) * 6);
+  minimapCtx.stroke();
+  
+  // Monster
+  if (monster.visible) {
+    const mmx = monster.x * scale + offX;
+    const mmy = monster.y * scale + offY;
+    minimapCtx.fillStyle = '#c04040';
+    minimapCtx.beginPath();
+    minimapCtx.arc(mmx, mmy, 3, 0, Math.PI * 2);
+    minimapCtx.fill();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GAME LOOP
+// ═══════════════════════════════════════════════════════════════════
+let lastTime = 0;
+
+function gameLoop(timestamp) {
+  const dt = timestamp - lastTime;
+  lastTime = timestamp;
+  
+  if (dt > 0 && dt < 500) {
+    update(dt);
+    render();
+  }
+  
+  if (gameRunning) {
+    requestAnimationFrame(gameLoop);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GAME FLOW
+// ═══════════════════════════════════════════════════════════════════
+function startGame() {
+  document.getElementById('intro-screen').classList.add('hidden');
+  document.getElementById('gameover-screen').classList.add('hidden');
+  document.getElementById('win-screen').classList.add('hidden');
+  
+  resize();
+  generateMaze();
+  
+  player.sanity = 100;
+  player.stamina = 100;
+  player.steps = 0;
+  player.dir = 0;
+  player.frame = 0;
+  player.moving = false;
+  player.sprinting = false;
+  
+  monster.path = [];
+  monster.pathIdx = 0;
+  monster.visible = false;
+  monster.lastSeen = 0;
+  
+  keys = {};
+  gameTime = 0;
+  gameStartTime = Date.now();
+  chatTimer = 0;
+  pathTimer = 0;
+  lightFlicker = 1;
+  animTime = 0;
+  gameRunning = true;
+  
+  document.getElementById('level-display').textContent = 'LEVEL ' + level;
+  document.getElementById('chat-messages').innerHTML = '';
+  
+  setTimeout(() => addChat("Dove... dove sei finito?", false), 1000);
+  setTimeout(() => addChat("Le luci ronzano. Non smettono mai.", false), 4000);
+  setTimeout(() => addChat("Trova la porta EXIT. È l'unica via d'uscita.", false), 7000);
+  
+  lastTime = performance.now();
+  requestAnimationFrame(gameLoop);
+}
+
+function gameOver() {
+  gameRunning = false;
+  level = 0;
+  
+  const time = Math.floor((Date.now() - gameStartTime) / 1000);
+  const min = Math.floor(time / 60);
+  const sec = time % 60;
+  
+  const texts = [
+    "Ti ha raggiunto tra i corridoi. Le luci si sono spente. Il ronzio si è fermato. Poi, niente.",
+    "I suoi passi erano troppo veloci. Le sue braccia troppo lunghe. Non hai avuto scampo.",
+    "L'hai sentito respirare sul collo. Poi il buio. Solo buio.",
+    "Nessuno esce dalle Backrooms. Non davvero."
+  ];
+  
+  document.getElementById('death-text').textContent = texts[Math.floor(Math.random() * texts.length)];
+  document.getElementById('stats').innerHTML = 
+    'Tempo: ' + min + ':' + sec.toString().padStart(2, '0') + '<br>' +
+    'Passi: ' + player.steps + '<br>' +
+    'Porte aperte: ' + doors.filter(d => maze[d.y][d.x] === DOOR_OPEN).length;
+  document.getElementById('gameover-screen').classList.remove('hidden');
+}
+
+function win() {
+  gameRunning = false;
+  
+  const time = Math.floor((Date.now() - gameStartTime) / 1000);
+  const min = Math.floor(time / 60);
+  const sec = time % 60;
+  
+  const texts = [
+    "La porta si apre. Luce. Aria fresca. Sei fuori... per ora. Ma le Backrooms non dimenticano.",
+    "Hai trovato l'uscita. Ma dall'altra parte... altri corridoi. Più profondi. Più bui.",
+    "Sei uscito da Level " + level + ". Il prossimo livello sarà peggio. Molto peggio."
+  ];
+  
+  document.getElementById('win-text').textContent = texts[Math.floor(Math.random() * texts.length)];
+  document.getElementById('stats-win').innerHTML = 
+    'Tempo: ' + min + ':' + sec.toString().padStart(2, '0') + '<br>' +
+    'Passi: ' + player.steps + '<br>' +
+    'Livello completato: ' + level;
+  
+  level++;
+  
+  document.getElementById('win-screen').classList.remove('hidden');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// INPUT
+// ═══════════════════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  keys[e.key.toLowerCase()] = true;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) {
+    e.preventDefault();
+  }
+});
+
+document.addEventListener('keyup', e => {
+  keys[e.key.toLowerCase()] = false;
+});
+
+document.getElementById('start-btn').addEventListener('click', startGame);
+document.getElementById('retry-btn').addEventListener('click', startGame);
+document.getElementById('playagain-btn').addEventListener('click', startGame);
+
+resize();
+</script>
+</body>
+</html>
