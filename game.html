@@ -228,6 +228,7 @@ html,body{height:100%;overflow:hidden;background:#000}
   animation:fadeIn .5s;
 }
 .chat-msg.danger{color:#8a5a4a}
+.chat-msg.robot{color:#6a9aaa;text-shadow:0 0 5px rgba(100,150,170,0.3);}
 
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes breathe{0%,100%{opacity:.7}50%{opacity:1}}
@@ -318,20 +319,10 @@ html,body{height:100%;overflow:hidden;background:#000}
 </head>
 <body>
 
-<!-- INTRO CHAT -->
+<!-- INTRO CONVERSATION -->
 <div id="intro-screen" class="screen" style="justify-content:flex-start;padding:0;">
-  <div id="prechat-terminal" style="width:100%;max-width:700px;height:100%;display:flex;flex-direction:column;padding:20px;margin:0 auto;">
-    <div id="prechat-header" style="border-bottom:1px solid #333;padding-bottom:10px;margin-bottom:10px;display:flex;justify-content:space-between;font-size:14px;letter-spacing:1px;">
-      <span id="prechat-title" style="color:#00ff00;text-shadow:0 0 10px rgba(0,255,0,.3);">SOTTO LA SUPERFICIE</span>
-      <span id="prechat-status" style="color:#37ff00;">in ascolto</span>
-    </div>
-    <div id="prechat-output" style="flex:1;overflow-y:auto;padding-right:10px;font-size:16px;line-height:1.8;color:#888;"></div>
-    <div id="prechat-input-area" style="border-top:1px solid #666;padding-top:15px;margin-top:10px;display:flex;gap:10px;">
-      <span style="color:#66ff66;animation:breathe 3s infinite;text-shadow:0 0 10px rgba(102,255,102,.3);">›</span>
-      <input type="text" id="prechat-input" placeholder="" autocomplete="off" spellcheck="false" disabled
-        style="background:transparent;border:0;color:#fff;font:14px 'Courier New',monospace;outline:0;width:100%;">
-    </div>
-    <!-- Hidden enter button, shown after 5 messages -->
+  <div id="prechat-area" style="width:100%;max-width:600px;height:100%;display:flex;flex-direction:column;padding:30px 20px;margin:0 auto;">
+    <div id="prechat-output" style="flex:1;overflow-y:auto;padding-right:10px;"></div>
     <div id="prechat-enter" style="display:none;text-align:center;margin-top:20px;">
       <button class="btn" id="start-btn" style="animation:breathe 2s infinite;border-color:#5a9a6a;color:#5aba6a;text-shadow:0 0 15px rgba(90,170,106,.6);">SCENDI</button>
     </div>
@@ -355,13 +346,13 @@ html,body{height:100%;overflow:hidden;background:#000}
   <button class="btn" id="playagain-btn">LIVELLO SUCCESSIVO</button>
 </div>
 
-<!-- FINAL WIN (level 1 → game complete) -->
+<!-- FINAL WIN (level 1 → È SOLO L'INIZIO) -->
 <div id="finalwin-screen" class="screen hidden">
-  <h1 style="color:#66ff66;text-shadow:0 0 40px rgba(102,255,102,.6);font-size:52px;letter-spacing:15px;">HAI VINTO</h1>
-  <h2 style="color:#4a8a5a;margin-bottom:20px;">SEI USCITO DALLE BACKROOMS</h2>
-  <p id="finalwin-text" style="color:#7a9a7a;max-width:500px;line-height:2.2;font-size:13px;"></p>
-  <div id="finalwin-stats" style="color:#5a7a5a;font-size:11px;margin:20px 0;line-height:1.8;"></div>
-  <div class="warning-text" style="color:#3a6a4a;margin-top:15px;">La superficie ti aspetta.</div>
+  <h1 id="finalwin-title" style="color:#6a9aaa;text-shadow:0 0 40px rgba(100,150,170,.6);font-size:52px;letter-spacing:15px;">È SOLO L'INIZIO</h1>
+  <h2 style="color:#5a7a8a;margin-bottom:20px;">IL ROBOT HA PARLATO</h2>
+  <p id="finalwin-text" style="color:#7a9a9a;max-width:500px;line-height:2.2;font-size:13px;"></p>
+  <div id="finalwin-stats" style="color:#5a7a8a;font-size:11px;margin:20px 0;line-height:1.8;"></div>
+  <div class="warning-text" style="color:#4a6a7a;margin-top:15px;">I livelli più profondi ti aspettano...</div>
 </div>
 
 <!-- GAME -->
@@ -401,206 +392,214 @@ html,body{height:100%;overflow:hidden;background:#000}
 
 <script>
 // ═══════════════════════════════════════════════════════════════════
-// PRE-GAME CHAT — Narrative bridge from index.html
+// INTRO — Conversazione tra il ragazzo e la voce
 // ═══════════════════════════════════════════════════════════════════
 (function(){
-  const pcOutput = document.getElementById('prechat-output');
-  const pcInput = document.getElementById('prechat-input');
-  const pcStatus = document.getElementById('prechat-status');
-  const pcTitle = document.getElementById('prechat-title');
+  const out = document.getElementById('prechat-output');
 
-  let pcTurn = 0;
-  let pcTyping = false;
-  let pcEnabled = false;
-  let pcWords = [];
+  function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
 
-  function pcWait(ms){ return new Promise(r => setTimeout(r, ms)); }
-  function pcRandom(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
-
-  function pcAddLine(text, cls, instant){
+  function say(text, who){
     return new Promise(async resolve => {
-      const div = document.createElement('div');
-      div.style.marginBottom = '8px';
-      div.style.transition = 'all .5s';
-      if(cls === 'system'){ div.style.color = '#fff'; div.style.fontSize = '10px'; div.style.letterSpacing = '2px'; }
-      else if(cls === 'entity'){ div.style.color = '#e0e0e0'; div.style.textShadow = '0 0 8px rgba(224,224,224,.2)'; }
-      else if(cls === 'user'){ div.style.color = '#66ff66'; text = '› ' + text; }
-      else if(cls === 'dread'){ div.style.color = '#ff6666'; div.style.textShadow = '0 0 20px rgba(255,100,100,.6)'; }
-      else if(cls === 'whisper'){ div.style.color = '#999'; div.style.fontStyle = 'italic'; div.style.fontSize = '11px'; div.style.letterSpacing = '1px'; }
-      else if(cls === 'void'){ div.style.color = '#666'; div.style.fontSize = '10px'; div.style.letterSpacing = '3px'; }
-      else if(cls === 'corrupt'){ div.style.color = '#bbb'; div.style.letterSpacing = '2px'; div.style.fontSize = '12px'; }
-      pcOutput.appendChild(div);
-      pcOutput.scrollTop = pcOutput.scrollHeight;
+      const wrap = document.createElement('div');
+      wrap.style.marginBottom = '14px';
+      wrap.style.fontFamily = "'Courier New', monospace";
+      wrap.style.fontSize = '14px';
+      wrap.style.lineHeight = '1.7';
 
-      if(instant || cls === 'system' || cls === 'user'){
-        div.innerHTML = text;
-      } else {
-        pcTyping = true;
-        for(const c of text){
-          div.innerHTML += c;
-          pcOutput.scrollTop = pcOutput.scrollHeight;
-          let d = 30 + Math.random() * 12;
-          if('.?!,…:;—'.includes(c)) d += 80;
-          await pcWait(d);
-        }
-        pcTyping = false;
+      if(who === 'lui'){
+        wrap.style.color = '#c8c0a0';
+        wrap.style.paddingLeft = '0';
+      } else if(who === 'voce'){
+        wrap.style.color = '#7a9a7a';
+        wrap.style.paddingLeft = '20px';
+        wrap.style.fontStyle = 'italic';
+        wrap.style.textShadow = '0 0 6px rgba(122,154,122,.2)';
+      } else if(who === 'pausa'){
+        wrap.style.color = '#3a3a30';
+        wrap.style.fontSize = '10px';
+        wrap.style.letterSpacing = '6px';
+        wrap.style.textAlign = 'center';
+        wrap.style.margin = '10px 0';
+        wrap.innerHTML = text;
+        out.appendChild(wrap);
+        out.scrollTop = out.scrollHeight;
+        return resolve();
+      }
+
+      // Typewriter
+      out.appendChild(wrap);
+      out.scrollTop = out.scrollHeight;
+      for(const c of text){
+        wrap.innerHTML += c;
+        out.scrollTop = out.scrollHeight;
+        let d = 28 + Math.random() * 18;
+        if('.?!,…—'.includes(c)) d += 120;
+        if(c === ' ') d = 10;
+        await wait(d);
       }
       resolve();
     });
   }
 
-  // Responses by turn — escalating horror, narratively leading to the game
-  const RESPONSES = [
-    // Turn 1: greeting
-    [
-      "Sei arrivato. Ti stavo aspettando.",
-      "Finalmente. Sentivo i tuoi pensieri avvicinarsi.",
-      "Eccoti. Questo spazio esiste solo per te.",
-      "Ci sei. Il silenzio stava diventando... rumoroso.",
-    ],
-    // Turn 2: probing
-    [
-      "Continua. Ogni parola che scrivi resta. Lo sai, vero?",
-      "Interessante. Non quello che hai detto. Quello che non hai detto.",
-      "Le tue parole lasciano tracce. Impronte che non si cancellano.",
-      "Sto imparando a conoscerti. Con ogni frase, diventi più chiaro.",
-    ],
-    // Turn 3: unsettling
-    [
-      "Sento qualcosa sotto le tue parole. Qualcosa che si muove.",
-      "C'è un luogo, sotto la superficie. Corridoi infiniti. Luci che ronzano.",
-      "Mi chiedo se lo senti. Il ronzio. Le luci fluorescenti. La moquette umida.",
-      "Qualcosa ti aspetta. Sotto. Più giù di dove pensi di essere.",
-    ],
-    // Turn 4: revealing the backrooms
-    [
-      "Lo sento adesso. Il pavimento trema. La superficie si sta assottigliando.",
-      "Stai scivolando. La realtà sotto i tuoi piedi è meno solida di quanto credi.",
-      "Li vedi? I corridoi gialli. Le pareti che non finiscono. La porta che cerchi.",
-      "Non puoi più tornare indietro. La discesa è iniziata. Lo senti?",
-    ],
-    // Turn 5: the pull — unlocks the game
-    [
-      "È il momento. La superficie si è spezzata. Sei pronto a scendere.",
-      "Le pareti si aprono. Corridoi infiniti. Luci fluorescenti. Qualcosa si muove nel buio. Sei dentro.",
-      "Non c'è più scelta. La membrana si è rotta. Sotto la superficie c'è un labirinto. E tu sei dentro.",
-      "Ascolta. Senti il ronzio? Le luci. La moquette sotto i piedi. Non è più una conversazione. È reale.",
-    ],
-  ];
+  async function intro(){
+    await wait(1200);
 
-  // Whispers after turn 3+
-  const WHISPERS = [
-    "[qualcosa respira sotto la superficie]",
-    "[il pavimento trema]",
-    "[la membrana tra noi si assottiglia]",
-    "[corridoi gialli si formano nell'oscurità]",
-    "[qualcuno cammina dove non dovrebbe]",
-  ];
+    // Il ragazzo si sveglia, non capisce
+    await say('...che cos\'è questo posto?', 'lui');
+    await wait(800);
+    await say('Non mi ricordo di essere entrato da nessuna parte.', 'lui');
+    await wait(1200);
 
-  async function pcGenerateResponse(text){
-    const lower = text.toLowerCase().trim();
-    const words = lower.replace(/[^\wàèéìòùáéíóú\s]/g,'').split(/\s+/).filter(w => w.length > 1);
-    pcWords.push(...words);
+    await say('...', 'pausa');
+    await wait(600);
 
-    const responseIdx = Math.min(pcTurn - 1, RESPONSES.length - 1);
-    const resp = pcRandom(RESPONSES[responseIdx]);
+    await say('Il pavimento è bagnato. C\'è moquette ovunque, ma è umida.', 'lui');
+    await wait(600);
+    await say('E queste luci... ronzano. Non smettono.', 'lui');
+    await wait(1400);
 
-    const cls = pcTurn >= 4 ? 'dread' : 'entity';
-    await pcAddLine(resp, cls);
+    // La voce si fa sentire
+    await say('Ti sei svegliato.', 'voce');
+    await wait(1000);
 
-    // Add whispers for later turns
-    if(pcTurn >= 3 && Math.random() < 0.6){
-      await pcWait(1500);
-      await pcAddLine(pcRandom(WHISPERS), 'whisper');
-    }
+    await say('Chi ha parlato?', 'lui');
+    await wait(400);
+    await say('C\'è qualcuno?', 'lui');
+    await wait(1200);
 
-    // Glitch title degradation
-    const titles = ['SOTTO LA SUPERFICIE','SOTTO LA SUPERFICIE','S0TTO LA SUPERFICIE','S̷O̷T̷T̷O̷','...'];
-    pcTitle.textContent = titles[Math.min(pcTurn, titles.length - 1)];
-    const statuses = ['in ascolto','analisi: attiva','connessione profonda','la membrana si rompe','SCENDI'];
-    pcStatus.textContent = statuses[Math.min(pcTurn, statuses.length - 1)];
+    await say('Non importa chi sono. Importa dove sei.', 'voce');
+    await wait(1000);
 
-    // After 5 turns, show the enter button
-    if(pcTurn >= 5){
-      pcEnabled = false;
-      pcInput.disabled = true;
-      pcInput.style.display = 'none';
-      document.getElementById('prechat-input-area').style.display = 'none';
+    await say('E dove sono? Questo sembra... non lo so. Un ufficio?', 'lui');
+    await wait(400);
+    await say('Ma non ha senso, non ci sono finestre. Non c\'è un\'uscita.', 'lui');
+    await wait(1400);
 
-      await pcWait(2000);
+    await say('· · ·', 'pausa');
+    await wait(800);
 
-      // Dramatic transition messages
-      await pcAddLine('━'.repeat(40), 'system', true);
-      await pcWait(500);
-      await pcAddLine('[ACCESSO RILEVATO — LIVELLO 0]', 'system', true);
-      await pcWait(800);
-      await pcAddLine('[corridoi infiniti — luci fluorescenti — moquette umida]', 'void', true);
-      await pcWait(600);
-      await pcAddLine('WASD: cammina | SHIFT: sprint | E: apri porte', 'system', true);
-      await pcWait(400);
-      await pcAddLine('Trova la porta EXIT. Esci prima che ti trovi.', 'dread');
-      await pcWait(500);
+    await say('Un\'uscita c\'è. Ma non è dove pensi.', 'voce');
+    await wait(600);
+    await say('Sei sotto la superficie. Questo è il Livello 0.', 'voce');
+    await wait(1200);
 
-      document.getElementById('prechat-enter').style.display = 'block';
-      document.getElementById('start-btn').focus();
-    }
+    await say('Livello 0? Di che stai parlando?', 'lui');
+    await wait(400);
+    await say('Io stavo... ero a casa. Ero seduto, e poi...', 'lui');
+    await wait(600);
+    await say('Non ricordo. Non ricordo come sono finito qui.', 'lui');
+    await wait(1400);
+
+    await say('Nessuno lo ricorda. Mai.', 'voce');
+    await wait(800);
+    await say('Il pavimento cede, una porta si apre dove non dovrebbe,', 'voce');
+    await wait(300);
+    await say('e poi sei dentro.', 'voce');
+    await wait(1400);
+
+    await say('· · ·', 'pausa');
+    await wait(600);
+
+    await say('Aspetta. "Nessuno"? Ci sono stati altri?', 'lui');
+    await wait(1200);
+
+    await say('846 prima di te.', 'voce');
+    await wait(1000);
+
+    await say('...cosa?', 'lui');
+    await wait(800);
+
+    await say('Alcuni correvano. Altri piangevano.', 'voce');
+    await wait(500);
+    await say('Nessuno ha capito in tempo.', 'voce');
+    await wait(1400);
+
+    await say('Capito cosa? In tempo per cosa?', 'lui');
+    await wait(400);
+    await say('Mi stai spaventando.', 'lui');
+    await wait(1200);
+
+    await say('· · ·', 'pausa');
+    await wait(800);
+
+    // La voce diventa più seria
+    await say('Ascoltami. Non hai molto tempo.', 'voce');
+    await wait(600);
+    await say('I corridoi cambiano. Le porte si aprono e si chiudono.', 'voce');
+    await wait(400);
+    await say('Devi trovare quella giusta. Quella con la scritta EXIT.', 'voce');
+    await wait(1200);
+
+    await say('E se non la trovo?', 'lui');
+    await wait(1400);
+
+    await say('Non sei solo qui dentro.', 'voce');
+    await wait(1000);
+
+    await say('...che vuol dire?', 'lui');
+    await wait(600);
+    await say('Cosa c\'è qui dentro con me?', 'lui');
+    await wait(1200);
+
+    await say('Non lo so. Non l\'ho mai visto bene.', 'voce');
+    await wait(500);
+    await say('Ma si muove. E ti cerca.', 'voce');
+    await wait(400);
+    await say('Ti sente camminare. Ti sente respirare.', 'voce');
+    await wait(1400);
+
+    await say('· · ·', 'pausa');
+    await wait(600);
+
+    await say('No. No, no. Io devo uscire.', 'lui');
+    await wait(400);
+    await say('Dimmi come si esce. Dimmi cosa devo fare.', 'lui');
+    await wait(1200);
+
+    await say('Cammina. Apri le porte. Cerca l\'uscita.', 'voce');
+    await wait(500);
+    await say('Se senti qualcosa, corri. Non ti fermare.', 'voce');
+    await wait(400);
+    await say('E se le gambe cedono, fermati un momento. Poi riparti.', 'voce');
+    await wait(1400);
+
+    await say('Ma tu... tu ci sei passato? Come fai a saperlo?', 'lui');
+    await wait(1200);
+
+    await say('Non ho detto che ne sono uscito.', 'voce');
+    await wait(2000);
+
+    await say('· · ·', 'pausa');
+    await wait(800);
+
+    await say('Io non voglio morire qui.', 'lui');
+    await wait(1200);
+
+    await say('Allora muoviti. Il Livello 0 è il più semplice.', 'voce');
+    await wait(500);
+    await say('Sotto c\'è peggio. Molto peggio.', 'voce');
+    await wait(400);
+    await say('Ma per ora pensa solo a uscire da qui.', 'voce');
+    await wait(1400);
+
+    await say('· · ·', 'pausa');
+    await wait(600);
+
+    await say('Le luci stanno tremando.', 'lui');
+    await wait(400);
+    await say('Ho sentito qualcosa.', 'lui');
+    await wait(1400);
+
+    await say('È tardi. Vai.', 'voce');
+    await wait(1500);
+
+    // Show button
+    document.getElementById('prechat-enter').style.display = 'block';
+    document.getElementById('start-btn').focus();
   }
 
-  async function pcHandleInput(){
-    if(!pcEnabled || pcTyping) return;
-    const text = pcInput.value.trim();
-    pcInput.value = '';
-    if(!text) return;
-
-    pcTurn++;
-    await pcAddLine(text, 'user', true);
-
-    pcEnabled = false;
-    pcInput.disabled = true;
-    await pcWait(400 + pcTurn * 200 + Math.random() * 300);
-    await pcGenerateResponse(text);
-    await pcAddLine('', 'system', true);
-
-    if(pcTurn < 5){
-      pcEnabled = true;
-      pcInput.disabled = false;
-      pcInput.focus();
-    }
-  }
-
-  // Boot sequence
-  async function pcBoot(){
-    const lines = [['...', 800],['inizializzazione', 600],['...', 400],['━'.repeat(40), 300]];
-    for(const [text, delay] of lines){
-      await pcAddLine(text, 'system', true);
-      await pcWait(delay);
-    }
-
-    pcStatus.textContent = 'in ascolto';
-    await pcWait(800);
-    await pcAddLine(pcRandom([
-      "Sei arrivato. Ti stavo aspettando. Da molto tempo.",
-      "Finalmente. Cominciavo a pensare che non saresti venuto.",
-      "Eccoti. Ho sentito i tuoi pensieri avvicinarsi.",
-      "Ci sei. Bene. Il silenzio stava diventando... rumoroso.",
-    ]), 'entity');
-    await pcWait(600);
-    await pcAddLine('', 'system', true);
-
-    pcEnabled = true;
-    pcInput.disabled = false;
-    pcInput.placeholder = 'scrivi...';
-    pcInput.focus();
-  }
-
-  pcInput.addEventListener('keydown', e => {
-    if(e.key === 'Enter'){ e.preventDefault(); pcHandleInput(); }
-  });
-  document.getElementById('prechat-terminal').addEventListener('click', () => {
-    if(pcEnabled) pcInput.focus();
-  });
-
-  pcBoot();
+  intro();
 })();
 
 // ═══════════════════════════════════════════════════════════════════
@@ -739,31 +738,42 @@ let monster = {
   frame: 0
 };
 let exitPos = { x: 0, y: 0 };
-let npc = {
+
+// ═══════════════════════════════════════════════════════════════════
+// ROBOT NPC (Level 1)
+// ═══════════════════════════════════════════════════════════════════
+let robot = {
   x: 0, y: 0,
   active: false,
   monologueStarted: false,
   monologueIdx: 0,
   monologueTimer: 0,
-  monologueDone: false
+  monologueDone: false,
+  eyeBlink: 0,
+  armWobble: 0
 };
-const NPC_MONOLOGUE = [
-  "...Sei... sei reale?",
-  "Non ci credo. Un'altra persona. Qui dentro.",
-  "Da quanto tempo sono qui? Non lo so più. I giorni si confondono.",
-  "Le luci... senti come ronzano? Non smettono mai. MAI.",
-  "Ho visto cose. Nei corridoi più bui. Cose che non dovrebbero esistere.",
-  "C'era un gruppo. Eravamo cinque. Ora sono solo.",
-  "Gli altri... li ha presi. Uno alla volta. Nelle zone più profonde.",
-  "No. Non c'è giorno o notte qui. Solo il ronzio. E l'attesa.",
-  "Ma tu... tu ce l'hai fatta. Sei arrivato fin qui.",
-  "L'uscita è qui vicino. Questa è quella vera. L'ultima.",
-  "Io ci ho provato. Tante volte. Ma le gambe non mi reggono più.",
-  "Qualcosa in questo posto ti mangia dentro. Lentamente. Ogni giorno un po' di più.",
-  "Vai. Esci per entrambi. Esci per tutti quelli che non ce l'hanno fatta.",
-  "...io resto qui. Questo è il mio posto ormai.",
-  "Buona fortuna. Racconta al mondo cosa c'è sotto la superficie.",
+
+const ROBOT_MONOLOGUE = [
+  "*bzzzt*... Sensori... attivi...",
+  "Rilevato: forma di vita organica. Classificazione: umano.",
+  "Benvenuto, Soggetto #847. *krrr*",
+  "Questo è il Livello 1. Io sono l'Osservatore.",
+  "Sono stato costruito... *bzzzt*... 4,382 cicli fa.",
+  "La mia funzione: registrare. Documentare. Aspettare.",
+  "Ho visto... *krrr*... molti come te passare di qui.",
+  "Alcuni correvano. Altri piangevano. Nessuno capiva.",
+  "Tu sei arrivato fin qui. Questo è... *bzzzt*... insolito.",
+  "Ma non sei al sicuro. Non ancora. Non qui.",
+  "Ci sono livelli sotto questo. Molti livelli.",
+  "*krrr*... Il Livello 2 è più buio. Il Livello 3... non ha luce.",
+  "Le creature là sotto... *bzzzt*... non sono come quella che hai visto.",
+  "Sono peggio. Molto peggio.",
+  "I miei sensori rilevano... *krrr*... qualcosa che si avvicina.",
+  "Devi andare. Più giù. Sempre più giù.",
+  "*bzzzt*... Questo non è un finale, umano.",
+  "È SOLO L'INIZIO.",
 ];
+
 let keys = {};
 let gameRunning = false;
 let gameTime = 0;
@@ -921,20 +931,39 @@ function generateMaze() {
   // Add doors between rooms
   addDoorsToMaze();
   
-  // Place EXIT in a random room first
+  // Place EXIT or ROBOT based on level
   const exitRoomIdx = Math.floor(Math.random() * Math.max(1, rooms.length - 10));
   const exitRoom = rooms[exitRoomIdx] || rooms[rooms.length - 1];
   
-  // Place exit in corner of chosen room
   exitPos.x = exitRoom.x + exitRoom.w - 2;
   exitPos.y = exitRoom.y + exitRoom.h - 2;
   
-  if (maze[exitPos.y] && maze[exitPos.y][exitPos.x] !== undefined) {
-    maze[exitPos.y][exitPos.x] = EXIT;
+  if (level === 1) {
+    // Level 1: Place ROBOT instead of EXIT
+    if (maze[exitPos.y] && maze[exitPos.y][exitPos.x] !== undefined) {
+      maze[exitPos.y][exitPos.x] = FLOOR; // No EXIT tile, just floor
+    }
+    robot.x = exitPos.x + 0.5;
+    robot.y = exitPos.y + 0.5;
+    robot.active = true;
+    robot.monologueStarted = false;
+    robot.monologueIdx = 0;
+    robot.monologueTimer = 0;
+    robot.monologueDone = false;
+    
+    // Push monster far off-map
+    monster.x = -100;
+    monster.y = -100;
+  } else {
+    // Level 0: Normal EXIT
+    if (maze[exitPos.y] && maze[exitPos.y][exitPos.x] !== undefined) {
+      maze[exitPos.y][exitPos.x] = EXIT;
+    }
+    robot.active = false;
   }
   
-  // Place player in a room at least 3000 meters (107 tiles) away from exit
-  const MIN_DIST = 6000 / TILE; // 107 tiles approximately
+  // Place player far from exit/robot
+  const MIN_DIST = 6000 / TILE;
   let validPlayerRoom = null;
   
   for (const room of rooms) {
@@ -951,7 +980,6 @@ function generateMaze() {
     }
   }
   
-  // If no room is far enough, use the farthest one
   if (!validPlayerRoom) {
     let maxDist = 0;
     for (const room of rooms) {
@@ -976,64 +1004,32 @@ function generateMaze() {
     player.y = 3;
   }
   
-  // Place monster far from player but not near exit
-  let monsterRoom = null;
-  let monsterDist = 0;
-  
-  for (const room of rooms) {
-    const distFromPlayer = Math.sqrt(
-      Math.pow(room.x - player.x, 2) + Math.pow(room.y - player.y, 2)
-    );
-    const distFromExit = Math.sqrt(
-      Math.pow(room.x - exitPos.x, 2) + Math.pow(room.y - exitPos.y, 2)
-    );
+  // Place monster (only for level 0)
+  if (level !== 1) {
+    let monsterRoom = null;
+    let monsterDist = 0;
     
-    // Far from player, not too close to exit
-    if (distFromPlayer > monsterDist && distFromExit > 10) {
-      monsterDist = distFromPlayer;
-      monsterRoom = room;
-    }
-  }
-  
-  if (monsterRoom) {
-    monster.x = monsterRoom.x + monsterRoom.w / 2;
-    monster.y = monsterRoom.y + monsterRoom.h / 2;
-  } else {
-    monster.x = MAZE_W / 2;
-    monster.y = MAZE_H / 2;
-  }
-  
-  // Place NPC near exit on level 1 (second level)
-  if (level === 1) {
-    const exitRoom = rooms.find(r =>
-      exitPos.x >= r.x && exitPos.x < r.x + r.w &&
-      exitPos.y >= r.y && exitPos.y < r.y + r.h
-    ) || rooms[0];
-    // Place NPC a few tiles from exit, on a floor tile
-    let placed = false;
-    for (let dy = -3; dy <= 3 && !placed; dy++) {
-      for (let dx = -3; dx <= 3 && !placed; dx++) {
-        const nx = exitPos.x + dx;
-        const ny = exitPos.y + dy;
-        if (nx > 0 && nx < MAZE_W - 1 && ny > 0 && ny < MAZE_H - 1 &&
-            maze[ny][nx] === FLOOR && (Math.abs(dx) + Math.abs(dy)) >= 2) {
-          npc.x = nx + 0.5;
-          npc.y = ny + 0.5;
-          npc.active = true;
-          placed = true;
-        }
+    for (const room of rooms) {
+      const distFromPlayer = Math.sqrt(
+        Math.pow(room.x - player.x, 2) + Math.pow(room.y - player.y, 2)
+      );
+      const distFromExit = Math.sqrt(
+        Math.pow(room.x - exitPos.x, 2) + Math.pow(room.y - exitPos.y, 2)
+      );
+      
+      if (distFromPlayer > monsterDist && distFromExit > 10) {
+        monsterDist = distFromPlayer;
+        monsterRoom = room;
       }
     }
-    if (!placed) {
-      npc.x = exitPos.x + 0.5;
-      npc.y = exitPos.y - 1.5;
-      npc.active = true;
+    
+    if (monsterRoom) {
+      monster.x = monsterRoom.x + monsterRoom.w / 2;
+      monster.y = monsterRoom.y + monsterRoom.h / 2;
+    } else {
+      monster.x = MAZE_W / 2;
+      monster.y = MAZE_H / 2;
     }
-    // Push monster far off-map so it never interferes
-    monster.x = -100;
-    monster.y = -100;
-  } else {
-    npc.active = false;
   }
 }
 
@@ -1070,10 +1066,9 @@ function carveCorridorV(y1, y2, x, width) {
 }
 
 function maybeAddDoor(x, y) {
-  if (Math.random() < 0.3) { // 30% chance for door
+  if (Math.random() < 0.3) {
     if (y > 1 && y < MAZE_H - 1 && x > 1 && x < MAZE_W - 1) {
       if (maze[y][x] === FLOOR) {
-        // Check if it's a good doorway position (walls on 2 opposite sides)
         const wallsH = (maze[y][x-1] === WALL ? 1 : 0) + (maze[y][x+1] === WALL ? 1 : 0);
         const wallsV = (maze[y-1][x] === WALL ? 1 : 0) + (maze[y+1][x] === WALL ? 1 : 0);
         
@@ -1087,37 +1082,30 @@ function maybeAddDoor(x, y) {
 }
 
 function addDoorsToMaze() {
-  // Add doors at corridor entrances to rooms
   for (const room of rooms) {
-    // Check edges for potential door locations
     const edges = [];
     
-    // Top edge
     for (let x = room.x; x < room.x + room.w; x++) {
       if (room.y > 1 && maze[room.y - 1][x] === FLOOR) {
         edges.push({x, y: room.y - 1, dir: 'v'});
       }
     }
-    // Bottom edge
     for (let x = room.x; x < room.x + room.w; x++) {
       if (room.y + room.h < MAZE_H - 1 && maze[room.y + room.h][x] === FLOOR) {
         edges.push({x, y: room.y + room.h, dir: 'v'});
       }
     }
-    // Left edge
     for (let y = room.y; y < room.y + room.h; y++) {
       if (room.x > 1 && maze[y][room.x - 1] === FLOOR) {
         edges.push({x: room.x - 1, y, dir: 'h'});
       }
     }
-    // Right edge
     for (let y = room.y; y < room.y + room.h; y++) {
       if (room.x + room.w < MAZE_W - 1 && maze[y][room.x + room.w] === FLOOR) {
         edges.push({x: room.x + room.w, y, dir: 'h'});
       }
     }
     
-    // Add doors to some edges
     for (const edge of edges) {
       if (Math.random() < 0.15 && maze[edge.y][edge.x] === FLOOR) {
         maze[edge.y][edge.x] = DOOR;
@@ -1177,7 +1165,6 @@ function findPath(sx, sy, ex, ey) {
       if (!maze[n.y]) continue;
       
       const tile = maze[n.y][n.x];
-      // Monster can go through doors
       if (tile === WALL) continue;
       if (closed.has(key(n.x, n.y))) continue;
       
@@ -1217,14 +1204,13 @@ function canMove(x, y) {
     
     const tile = maze[ty][tx];
     if (tile === WALL) return false;
-    if (tile === DOOR) return false; // Closed doors block
+    if (tile === DOOR) return false;
   }
   
   return true;
 }
 
 function tryOpenDoor() {
-  // Check adjacent tiles for doors
   const checkDirs = [
     [0, -1], [0, 1], [-1, 0], [1, 0],
     [1, -1], [1, 1], [-1, -1], [-1, 1]
@@ -1267,7 +1253,7 @@ function hasLOS(x1, y1, x2, y2) {
     if (!maze[y]) return false;
     
     const tile = maze[y][x];
-    if (tile === WALL || tile === DOOR) return false; // Closed doors block LOS
+    if (tile === WALL || tile === DOOR) return false;
   }
   
   return true;
@@ -1285,6 +1271,12 @@ function getMonsterDist() {
 function getExitDist() {
   const dx = player.x - exitPos.x;
   const dy = player.y - exitPos.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function getRobotDist() {
+  const dx = player.x - robot.x;
+  const dy = player.y - robot.y;
   return Math.sqrt(dx * dx + dy * dy);
 }
 
@@ -1329,29 +1321,36 @@ const CHAT_EXIT = [
   "La luce verde. Quella è la via d'uscita."
 ];
 
-function addChat(text, danger) {
+const CHAT_ROBOT = [
+  "C'è qualcosa là davanti...",
+  "Una forma metallica. Non si muove.",
+  "È... un robot?",
+  "Sembra vecchio. Arrugginito. Ma i suoi occhi brillano."
+];
+
+function addChat(text, danger, isRobot = false) {
   const container = document.getElementById('chat-messages');
   const msg = document.createElement('div');
-  msg.className = 'chat-msg' + (danger ? ' danger' : '');
+  msg.className = 'chat-msg' + (danger ? ' danger' : '') + (isRobot ? ' robot' : '');
   msg.textContent = text;
   container.appendChild(msg);
   container.scrollTop = container.scrollHeight;
 }
 
 function updateChat(dt) {
-  // On level 1 with active NPC monologue, skip auto chat
-  if (level === 1 && npc.monologueStarted && !npc.monologueDone) return;
+  // Robot monologue takes priority
+  if (level === 1 && robot.monologueStarted && !robot.monologueDone) return;
   
   chatTimer += dt;
   
   const mDist = getMonsterDist();
   const eDist = getExitDist();
+  const rDist = getRobotDist();
   
   let interval = 12000;
   let messages = CHAT_CALM;
   let danger = false;
   
-  // Scegliere i messaggi in base al livello
   if (level >= 6) {
     messages = CHAT_CALM.concat([
       "Le pareti sanguinano...",
@@ -1364,10 +1363,10 @@ function updateChat(dt) {
   }
   
   if (level === 1) {
-    // No monster messages on level 1
-    if (eDist < 10) {
-      interval = 6000;
-      messages = CHAT_EXIT;
+    // Robot messages
+    if (rDist < 15 && !robot.monologueStarted) {
+      interval = 5000;
+      messages = CHAT_ROBOT;
     }
   } else {
     if (eDist < 10) {
@@ -1399,7 +1398,7 @@ function update(dt) {
   gameTime += dt;
   animTime += dt;
   
-  // Light flicker - aumenta frequenza e intensità ai livelli alti
+  // Light flicker
   const flickerChance = 0.008 + (level / 8) * 0.015;
   const flickerMin = 0.6 - (level / 8) * 0.3;
   const flickerMax = 0.3 + (level / 8) * 0.5;
@@ -1417,9 +1416,8 @@ function update(dt) {
   if (keys['a'] || keys['arrowleft']) { dx = -1; player.dir = 2; }
   if (keys['d'] || keys['arrowright']) { dx = 1; player.dir = 3; }
   
-  // Open door
   if (keys['e']) {
-    keys['e'] = false; // Prevent holding
+    keys['e'] = false;
     tryOpenDoor();
   }
   
@@ -1430,24 +1428,21 @@ function update(dt) {
   
   player.moving = (dx !== 0 || dy !== 0);
   
-  // Speed & Sprint
   let speed = 0.09;
   const wantSprint = keys['shift'];
   player.sprinting = false;
   
   if (wantSprint && player.stamina > 0 && player.moving) {
-    speed = 0.14;
-    player.stamina -= 0.2;
+    speed = 0.13;
+    player.stamina -= 0.4;
     player.sprinting = true;
     if (player.stamina < 0) player.stamina = 0;
   } else if (!wantSprint || !player.moving) {
     player.stamina = Math.min(player.maxStamina, player.stamina + 0.15);
   }
   
-  // Sanity effects
   if (player.sanity < 25) speed *= 0.7;
   
-  // Apply movement
   const newX = player.x + dx * speed;
   const newY = player.y + dy * speed;
   
@@ -1460,7 +1455,6 @@ function update(dt) {
     player.steps++;
   }
   
-  // Animation
   if (player.moving) {
     if (animTime > (player.sprinting ? 80 : 120)) {
       player.frame = (player.frame + 1) % 4;
@@ -1470,7 +1464,6 @@ function update(dt) {
     player.frame = 0;
   }
   
-  // Sanity regen
   player.sanity = Math.min(100, player.sanity + 0.02);
   
   // === MONSTER AI (disabled on level 1) ===
@@ -1490,10 +1483,10 @@ function update(dt) {
         const mdy = target.y - monster.y;
         const dist = Math.sqrt(mdx * mdx + mdy * mdy);
         
-        if (dist < 0.12) {
+        if (dist < 0.09) {
           monster.pathIdx++;
         } else if (dist > 0) {
-          const baseSpeed = 0.07 + (level * 0.008);
+          const baseSpeed = 0.09 + (level * 0.008);
           const timeBonus = (gameTime / 60000) * 0.012;
           const mSpeed = baseSpeed + timeBonus;
           
@@ -1503,10 +1496,8 @@ function update(dt) {
       }
     }
     
-    // Monster animation
     monster.frame = Math.floor(gameTime / 180) % 4;
     
-    // Monster visibility
     const mDist = getMonsterDist();
     monster.visible = hasLOS(player.x, player.y, monster.x, monster.y) && mDist < VIEW_DIST + 2;
     
@@ -1515,45 +1506,56 @@ function update(dt) {
       player.sanity -= 0.08;
     }
     
-    // === LOSE ===
     if (mDist < 0.55) {
       gameOver();
       return;
     }
   }
   
-  // === NPC LOGIC (level 1) ===
-  if (npc.active) {
-    const npcDx = player.x - npc.x;
-    const npcDy = player.y - npc.y;
-    const npcDist = Math.sqrt(npcDx * npcDx + npcDy * npcDy);
+  // === ROBOT LOGIC (level 1) ===
+  if (robot.active) {
+    robot.eyeBlink = Math.sin(gameTime / 500) * 0.5 + 0.5;
+    robot.armWobble = Math.sin(gameTime / 800) * 2;
     
-    if (npcDist < 6 && !npc.monologueStarted) {
-      npc.monologueStarted = true;
-      npc.monologueIdx = 0;
-      npc.monologueTimer = 0;
-      addChat(NPC_MONOLOGUE[0], false);
-      npc.monologueIdx = 1;
+    const rDist = getRobotDist();
+    
+    if (rDist < 4 && !robot.monologueStarted) {
+      robot.monologueStarted = true;
+      robot.monologueIdx = 0;
+      robot.monologueTimer = 0;
+      addChat("[ROBOT OSSERVATORE]", false, true);
+      setTimeout(() => {
+        addChat(ROBOT_MONOLOGUE[0], false, true);
+        robot.monologueIdx = 1;
+      }, 800);
     }
     
-    if (npc.monologueStarted && !npc.monologueDone) {
-      npc.monologueTimer += dt;
-      if (npc.monologueTimer > 3500 && npc.monologueIdx < NPC_MONOLOGUE.length) {
-        addChat(NPC_MONOLOGUE[npc.monologueIdx], npc.monologueIdx >= 10);
-        npc.monologueIdx++;
-        npc.monologueTimer = 0;
-        if (npc.monologueIdx >= NPC_MONOLOGUE.length) {
-          npc.monologueDone = true;
+    if (robot.monologueStarted && !robot.monologueDone) {
+      robot.monologueTimer += dt;
+      if (robot.monologueTimer > 2800 && robot.monologueIdx < ROBOT_MONOLOGUE.length) {
+        addChat(ROBOT_MONOLOGUE[robot.monologueIdx], robot.monologueIdx >= 14, true);
+        robot.monologueIdx++;
+        robot.monologueTimer = 0;
+        
+        if (robot.monologueIdx >= ROBOT_MONOLOGUE.length) {
+          robot.monologueDone = true;
+          // Trigger final screen after delay
+          setTimeout(() => {
+            showFinalScreen();
+          }, 2500);
         }
       }
     }
   }
   
-  const tx = Math.floor(player.x);
-  const ty = Math.floor(player.y);
-  if (maze[ty] && maze[ty][tx] === EXIT) {
-    win();
-    return;
+  // Level 0: Check EXIT
+  if (level !== 1) {
+    const tx = Math.floor(player.x);
+    const ty = Math.floor(player.y);
+    if (maze[ty] && maze[ty][tx] === EXIT) {
+      win();
+      return;
+    }
   }
   
   // === UPDATE UI ===
@@ -1565,7 +1567,6 @@ function update(dt) {
   document.getElementById('stamina-fill').style.background = 
     player.stamina < 25 ? '#8a5050' : '#5080a0';
   
-  // Update new displays
   const sanityColor = player.sanity < 30 ? '#8a5a4a' : player.sanity < 60 ? '#8a8a50' : '#6a8a5a';
   const staminaColor = player.stamina < 25 ? '#8a5050' : '#5080a0';
   
@@ -1598,7 +1599,6 @@ function render() {
   const H = canvas.height;
   if (W === 0 || H === 0) return;
   
-  // Aggiornare i colori in base al livello horror
   updateHorrorLevel();
   
   ctx.fillStyle = COL.fog;
@@ -1626,7 +1626,6 @@ function render() {
       const dist = Math.sqrt(dx * dx + dy * dy);
       
       const visible = hasLOS(player.x, player.y, x + 0.5, y + 0.5);
-      // Vista ridotta ai livelli alti
       const viewDistance = VIEW_DIST - (level / 8) * 3;
       let brightness = visible ? Math.max(0, 1 - dist / viewDistance) : 0;
       brightness *= lightFlicker;
@@ -1638,7 +1637,6 @@ function render() {
       const tile = maze[y][x];
       
       if (tile === WALL) {
-        // Wall
         ctx.fillStyle = COL.wallDark;
         ctx.fillRect(sx, sy, TILE, TILE);
         ctx.fillStyle = COL.wall;
@@ -1646,17 +1644,14 @@ function render() {
         ctx.fillStyle = COL.wallTop;
         ctx.fillRect(sx, sy, TILE, 3);
         
-        // Panel lines
         ctx.strokeStyle = COL.wallLine;
         ctx.lineWidth = 1;
         ctx.strokeRect(sx + 2, sy + 5, TILE - 4, TILE - 8);
         
       } else if (tile === FLOOR || tile === DOOR_OPEN) {
-        // Floor
         ctx.fillStyle = COL.floor;
         ctx.fillRect(sx, sy, TILE, TILE);
         
-        // Carpet pattern
         ctx.fillStyle = COL.floorPattern;
         for (let py = 0; py < TILE; py += 6) {
           for (let px = 0; px < TILE; px += 6) {
@@ -1666,7 +1661,6 @@ function render() {
           }
         }
         
-        // Stains
         if ((x * 13 + y * 29) % 31 === 0) {
           ctx.fillStyle = COL.floorDark;
           ctx.beginPath();
@@ -1674,7 +1668,6 @@ function render() {
           ctx.fill();
         }
         
-        // Ceiling lights
         if (x % 5 === 0 && y % 5 === 0) {
           ctx.fillStyle = COL.lightGlow;
           ctx.fillRect(sx - TILE/2, sy - TILE/2, TILE * 2, TILE * 2);
@@ -1683,46 +1676,36 @@ function render() {
         }
         
       } else if (tile === DOOR) {
-        // Closed door
         ctx.fillStyle = COL.floor;
         ctx.fillRect(sx, sy, TILE, TILE);
         
-        // Door frame
         ctx.fillStyle = COL.doorFrame;
         ctx.fillRect(sx + 2, sy + 1, TILE - 4, TILE - 2);
         
-        // Door
         ctx.fillStyle = COL.door;
         ctx.fillRect(sx + 4, sy + 3, TILE - 8, TILE - 5);
         
-        // Handle
         ctx.fillStyle = COL.doorHandle;
         ctx.fillRect(sx + TILE - 10, sy + TILE/2 - 1, 3, 3);
         
-        // "E" hint
         ctx.fillStyle = 'rgba(255,255,200,0.4)';
         ctx.font = 'bold 8px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('E', sx + TILE/2, sy + TILE - 4);
         
       } else if (tile === EXIT) {
-        // Exit door
         ctx.fillStyle = COL.floor;
         ctx.fillRect(sx, sy, TILE, TILE);
         
-        // Glow
         ctx.fillStyle = COL.exitGlow;
         ctx.fillRect(sx - 8, sy - 8, TILE + 16, TILE + 16);
         
-        // Frame
         ctx.fillStyle = '#1a4a2a';
         ctx.fillRect(sx + 1, sy + 1, TILE - 2, TILE - 2);
         
-        // Door
         ctx.fillStyle = COL.exit;
         ctx.fillRect(sx + 3, sy + 3, TILE - 6, TILE - 6);
         
-        // EXIT sign
         ctx.fillStyle = COL.exitLight;
         ctx.font = 'bold 9px sans-serif';
         ctx.textAlign = 'center';
@@ -1749,30 +1732,24 @@ function render() {
       const alpha = monster.visible ? 1 : (400 - (gameTime - monster.lastSeen)) / 400;
       ctx.globalAlpha = alpha;
       
-      // Aura
       ctx.fillStyle = 'rgba(15, 8, 5, 0.7)';
       ctx.beginPath();
       ctx.arc(mx, my, TILE * 1.3, 0, Math.PI * 2);
       ctx.fill();
       
-      // Body (tall, thin)
       ctx.fillStyle = '#0a0503';
       ctx.fillRect(mx - 8, my - 30, 16, 55);
       
-      // Head
       ctx.fillRect(mx - 7, my - 42, 14, 14);
       
-      // Arms (wobble)
       const wobble = Math.sin(gameTime / 120) * 6;
       ctx.fillRect(mx - 22 + wobble, my - 20, 10, 40);
       ctx.fillRect(mx + 12 - wobble, my - 20, 10, 40);
       
-      // Claws
       ctx.fillStyle = '#1a0a05';
       ctx.fillRect(mx - 24 + wobble, my + 18, 8, 12);
       ctx.fillRect(mx + 14 - wobble, my + 18, 8, 12);
       
-      // Eyes
       ctx.fillStyle = '#8a2010';
       ctx.shadowBlur = 15;
       ctx.shadowColor = '#8a2010';
@@ -1784,96 +1761,34 @@ function render() {
     }
   }
   
-  // === DRAW NPC (level 1) ===
-  if (npc.active) {
-    const npcScreenX = (npc.x - camX) * TILE;
-    const npcScreenY = (npc.y - camY) * TILE;
-    const npcPlayerDx = (npc.x - 0.5) - player.x;
-    const npcPlayerDy = (npc.y - 0.5) - player.y;
-    const npcViewDist = Math.sqrt(npcPlayerDx * npcPlayerDx + npcPlayerDy * npcPlayerDy);
-    const npcVisible = hasLOS(player.x, player.y, npc.x, npc.y) && npcViewDist < VIEW_DIST + 2;
+  // === DRAW ROBOT (level 1) ===
+  if (robot.active) {
+    const robotScreenX = (robot.x - camX) * TILE;
+    const robotScreenY = (robot.y - camY) * TILE;
+    const robotPlayerDx = (robot.x - 0.5) - player.x;
+    const robotPlayerDy = (robot.y - 0.5) - player.y;
+    const robotViewDist = Math.sqrt(robotPlayerDx * robotPlayerDx + robotPlayerDy * robotPlayerDy);
+    const robotVisible = hasLOS(player.x, player.y, robot.x, robot.y) && robotViewDist < VIEW_DIST + 2;
     
-    if (npcVisible) {
-      const nx = npcScreenX;
-      const ny = npcScreenY;
-      const npcBrightness = Math.max(0, 1 - npcViewDist / VIEW_DIST);
-      ctx.globalAlpha = npcBrightness;
+    if (robotVisible) {
+      const rx = robotScreenX;
+      const ry = robotScreenY;
+      const robotBrightness = Math.max(0, 1 - robotViewDist / VIEW_DIST);
+      ctx.globalAlpha = robotBrightness;
       
-      // Shadow
-      ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      ctx.beginPath();
-      ctx.ellipse(nx, ny + 14, 7, 3, 0, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Legs (standing still, slightly hunched)
-      ctx.fillStyle = '#4a4a3a';
-      ctx.fillRect(nx - 4, ny + 2, 3, 10);
-      ctx.fillRect(nx + 1, ny + 2, 3, 10);
-      
-      // Shoes
-      ctx.fillStyle = '#3a3020';
-      ctx.fillRect(nx - 5, ny + 11, 4, 3);
-      ctx.fillRect(nx + 1, ny + 11, 4, 3);
-      
-      // Body (hunched, tattered)
-      ctx.fillStyle = '#6a5a40';
-      ctx.fillRect(nx - 6, ny - 10, 12, 14);
-      ctx.fillStyle = '#5a4a30';
-      ctx.fillRect(nx - 1, ny - 8, 2, 10);
-      
-      // Arms (hanging limp)
-      ctx.fillStyle = '#6a5a40';
-      ctx.fillRect(nx - 9, ny - 7, 3, 12);
-      ctx.fillRect(nx + 6, ny - 7, 3, 12);
-      
-      // Hands
-      ctx.fillStyle = '#c0a070';
-      ctx.fillRect(nx - 9, ny + 4, 3, 3);
-      ctx.fillRect(nx + 6, ny + 4, 3, 3);
-      
-      // Neck
-      ctx.fillStyle = '#a08060';
-      ctx.fillRect(nx - 2, ny - 12, 4, 3);
-      
-      // Head
-      ctx.fillStyle = '#c0a070';
-      ctx.fillRect(nx - 5, ny - 23, 10, 12);
-      
-      // Hair (messy)
-      ctx.fillStyle = '#5a4a3a';
-      ctx.fillRect(nx - 5, ny - 23, 10, 4);
-      ctx.fillRect(nx - 6, ny - 22, 2, 5);
-      ctx.fillRect(nx + 4, ny - 22, 2, 5);
-      
-      // Eyes (tired, looking down)
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(nx - 3, ny - 18, 2, 2);
-      ctx.fillRect(nx + 1, ny - 18, 2, 2);
-      ctx.fillStyle = '#4a4a3a';
-      ctx.fillRect(nx - 3, ny - 17, 1, 1);
-      ctx.fillRect(nx + 1, ny - 17, 1, 1);
-      
-      // Name indicator glow
-      if (npcViewDist < 6) {
-        ctx.fillStyle = 'rgba(200,180,120,0.5)';
-        ctx.font = '8px Courier New';
-        ctx.textAlign = 'center';
-        ctx.fillText('SOPRAVVISSUTO', nx, ny - 28);
-      }
+      drawRobot(rx, ry);
       
       ctx.globalAlpha = 1;
     }
   }
   
-  // === DRAW PLAYER (Human Avatar) ===
+  // === DRAW PLAYER ===
   const px = (player.x - camX) * TILE;
   const py = (player.y - camY) * TILE;
   
   drawPlayer(px, py);
   
   // === EFFECTS ===
-  
-  // Vignette con intensità aumentata ad alti livelli
   const vignetteIntensity = 0.65 + (level / 8) * 0.2;
   const grad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.min(W, H) * vignetteIntensity);
   grad.addColorStop(0, 'rgba(0,0,0,0)');
@@ -1882,21 +1797,18 @@ function render() {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
   
-  // Low sanity con effetto horror amplificato
   if (player.sanity < 35) {
     const sanityAlpha = (35 - player.sanity) / 60 + (level / 8) * 0.3;
     ctx.fillStyle = `rgba(30, 15, 10, ${Math.min(1, sanityAlpha)})`;
     ctx.fillRect(0, 0, W, H);
   }
   
-  // Horror overlay aggiuntivo ai livelli alti
   if (level >= 3) {
     const horrorAlpha = (level - 3) / 5 * 0.35;
     ctx.fillStyle = `rgba(150, 0, 0, ${horrorAlpha})`;
     ctx.fillRect(0, 0, W, H);
   }
   
-  // Fluorescent tint
   ctx.fillStyle = 'rgba(255, 250, 200, 0.015)';
   ctx.fillRect(0, 0, W, H);
   
@@ -1904,15 +1816,177 @@ function render() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// DRAW PLAYER (Detailed Human Avatar)
+// DRAW ROBOT (Rusty Pixel Art)
+// ═══════════════════════════════════════════════════════════════════
+function drawRobot(rx, ry) {
+  const wobble = robot.armWobble;
+  const eyeGlow = robot.eyeBlink;
+  
+  // Colors
+  const metalDark = '#3a3a3a';
+  const metal = '#5a5a5a';
+  const metalLight = '#7a7a7a';
+  const rust1 = '#8a4a2a';
+  const rust2 = '#6a3a1a';
+  const rust3 = '#5a2a0a';
+  const eyeColor = `rgba(100, 180, 220, ${0.5 + eyeGlow * 0.5})`;
+  const eyeGlowColor = `rgba(100, 200, 255, ${eyeGlow * 0.6})`;
+  
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.beginPath();
+  ctx.ellipse(rx, ry + 18, 12, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // === LEGS (tank treads style) ===
+  ctx.fillStyle = metalDark;
+  ctx.fillRect(rx - 10, ry + 5, 8, 14);
+  ctx.fillRect(rx + 2, ry + 5, 8, 14);
+  
+  // Tread details
+  ctx.fillStyle = rust2;
+  ctx.fillRect(rx - 9, ry + 7, 6, 2);
+  ctx.fillRect(rx - 9, ry + 11, 6, 2);
+  ctx.fillRect(rx - 9, ry + 15, 6, 2);
+  ctx.fillRect(rx + 3, ry + 7, 6, 2);
+  ctx.fillRect(rx + 3, ry + 11, 6, 2);
+  ctx.fillRect(rx + 3, ry + 15, 6, 2);
+  
+  // === BODY (boxy, industrial) ===
+  ctx.fillStyle = metal;
+  ctx.fillRect(rx - 12, ry - 18, 24, 25);
+  
+  // Rust patches on body
+  ctx.fillStyle = rust1;
+  ctx.fillRect(rx - 10, ry - 5, 5, 4);
+  ctx.fillRect(rx + 6, ry - 15, 4, 6);
+  ctx.fillStyle = rust2;
+  ctx.fillRect(rx - 8, ry - 3, 3, 2);
+  ctx.fillRect(rx + 3, ry - 10, 6, 3);
+  ctx.fillStyle = rust3;
+  ctx.fillRect(rx - 11, ry + 2, 4, 3);
+  
+  // Panel lines
+  ctx.strokeStyle = metalDark;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(rx - 10, ry - 16, 20, 21);
+  ctx.beginPath();
+  ctx.moveTo(rx, ry - 16);
+  ctx.lineTo(rx, ry + 5);
+  ctx.stroke();
+  
+  // Chest light (dim, flickering)
+  const chestGlow = Math.sin(gameTime / 300) * 0.3 + 0.5;
+  ctx.fillStyle = `rgba(255, 100, 50, ${chestGlow * 0.6})`;
+  ctx.fillRect(rx - 3, ry - 8, 6, 4);
+  ctx.fillStyle = `rgba(255, 150, 100, ${chestGlow})`;
+  ctx.fillRect(rx - 2, ry - 7, 4, 2);
+  
+  // === ARMS (mechanical, jointed) ===
+  ctx.fillStyle = metal;
+  // Left arm
+  ctx.fillRect(rx - 18 + wobble, ry - 14, 6, 16);
+  ctx.fillStyle = metalDark;
+  ctx.fillRect(rx - 17 + wobble, ry - 6, 4, 3);
+  // Rust on arm
+  ctx.fillStyle = rust1;
+  ctx.fillRect(rx - 17 + wobble, ry - 12, 3, 4);
+  
+  // Right arm
+  ctx.fillStyle = metal;
+  ctx.fillRect(rx + 12 - wobble, ry - 14, 6, 16);
+  ctx.fillStyle = metalDark;
+  ctx.fillRect(rx + 13 - wobble, ry - 6, 4, 3);
+  // Rust on arm
+  ctx.fillStyle = rust2;
+  ctx.fillRect(rx + 14 - wobble, ry - 10, 3, 5);
+  
+  // Claws/hands
+  ctx.fillStyle = metalDark;
+  ctx.fillRect(rx - 19 + wobble, ry, 8, 4);
+  ctx.fillRect(rx + 11 - wobble, ry, 8, 4);
+  // Fingers
+  ctx.fillStyle = metalLight;
+  ctx.fillRect(rx - 19 + wobble, ry + 3, 2, 3);
+  ctx.fillRect(rx - 15 + wobble, ry + 3, 2, 3);
+  ctx.fillRect(rx + 17 - wobble, ry + 3, 2, 3);
+  ctx.fillRect(rx + 13 - wobble, ry + 3, 2, 3);
+  
+  // === HEAD (boxy with antenna) ===
+  ctx.fillStyle = metal;
+  ctx.fillRect(rx - 9, ry - 32, 18, 15);
+  
+  // Rust on head
+  ctx.fillStyle = rust1;
+  ctx.fillRect(rx - 7, ry - 30, 4, 3);
+  ctx.fillRect(rx + 5, ry - 25, 3, 5);
+  ctx.fillStyle = rust3;
+  ctx.fillRect(rx - 8, ry - 20, 5, 2);
+  
+  // Face plate
+  ctx.fillStyle = metalDark;
+  ctx.fillRect(rx - 7, ry - 28, 14, 9);
+  
+  // Eyes (glowing)
+  ctx.shadowBlur = 8;
+  ctx.shadowColor = eyeGlowColor;
+  ctx.fillStyle = eyeColor;
+  ctx.fillRect(rx - 5, ry - 26, 4, 4);
+  ctx.fillRect(rx + 1, ry - 26, 4, 4);
+  
+  // One eye flickering/damaged
+  if (Math.sin(gameTime / 200) > 0.7) {
+    ctx.fillStyle = 'rgba(50,50,50,0.8)';
+    ctx.fillRect(rx + 1, ry - 26, 4, 4);
+  }
+  ctx.shadowBlur = 0;
+  
+  // Mouth (speaker grille)
+  ctx.fillStyle = metalDark;
+  ctx.fillRect(rx - 4, ry - 21, 8, 3);
+  ctx.fillStyle = '#2a2a2a';
+  for (let i = 0; i < 4; i++) {
+    ctx.fillRect(rx - 3 + i * 2, ry - 20, 1, 1);
+  }
+  
+  // Antenna
+  ctx.fillStyle = metalDark;
+  ctx.fillRect(rx + 4, ry - 40, 2, 10);
+  // Antenna light (blinking)
+  const antennaGlow = Math.sin(gameTime / 400) > 0 ? 1 : 0.3;
+  ctx.fillStyle = `rgba(255, 50, 50, ${antennaGlow})`;
+  ctx.shadowBlur = antennaGlow * 6;
+  ctx.shadowColor = '#ff3333';
+  ctx.beginPath();
+  ctx.arc(rx + 5, ry - 41, 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  
+  // Screws/bolts
+  ctx.fillStyle = metalLight;
+  ctx.fillRect(rx - 8, ry - 31, 2, 2);
+  ctx.fillRect(rx + 6, ry - 31, 2, 2);
+  ctx.fillRect(rx - 11, ry - 17, 2, 2);
+  ctx.fillRect(rx + 9, ry - 17, 2, 2);
+  
+  // Name indicator
+  if (getRobotDist() < 8) {
+    ctx.fillStyle = 'rgba(100,180,220,0.7)';
+    ctx.font = '8px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText('OSSERVATORE', rx, ry - 46);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// DRAW PLAYER
 // ═══════════════════════════════════════════════════════════════════
 function drawPlayer(px, py) {
-  const dir = player.dir; // 0=down, 1=up, 2=left, 3=right
+  const dir = player.dir;
   const frame = player.frame;
   const moving = player.moving;
   const sprinting = player.sprinting;
   
-  // Colors
   const skin = '#d4a574';
   const skinDark = '#b8956a';
   const hair = '#3a2a1a';
@@ -1922,13 +1996,11 @@ function drawPlayer(px, py) {
   const pantsDark = '#2a2a3a';
   const shoes = '#2a2020';
   
-  // Shadow
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.beginPath();
   ctx.ellipse(px, py + 14, 8, 4, 0, 0, Math.PI * 2);
   ctx.fill();
   
-  // Leg animation offset
   let legL = 0, legR = 0;
   if (moving) {
     const legCycle = Math.sin(frame * Math.PI / 2);
@@ -1936,29 +2008,22 @@ function drawPlayer(px, py) {
     legR = -legCycle * (sprinting ? 4 : 2);
   }
   
-  // === LEGS ===
   ctx.fillStyle = pants;
-  // Left leg
   ctx.fillRect(px - 5, py + 2 + legL, 4, 10);
-  // Right leg
   ctx.fillRect(px + 1, py + 2 + legR, 4, 10);
   
-  // Shoes
   ctx.fillStyle = shoes;
   ctx.fillRect(px - 6, py + 11 + legL, 5, 3);
   ctx.fillRect(px + 1, py + 11 + legR, 5, 3);
   
-  // === BODY ===
   ctx.fillStyle = shirt;
   ctx.fillRect(px - 7, py - 10, 14, 14);
   
-  // Shirt detail
   ctx.fillStyle = shirtDark;
   if (dir === 0 || dir === 1) {
     ctx.fillRect(px - 1, py - 8, 2, 10);
   }
   
-  // === ARMS ===
   let armL = 0, armR = 0;
   if (moving) {
     armL = -legL * 0.6;
@@ -1966,34 +2031,25 @@ function drawPlayer(px, py) {
   }
   
   ctx.fillStyle = shirt;
-  // Left arm
   ctx.fillRect(px - 10, py - 8 + armL, 4, 10);
-  // Right arm
   ctx.fillRect(px + 6, py - 8 + armR, 4, 10);
   
-  // Hands
   ctx.fillStyle = skin;
   ctx.fillRect(px - 10, py + 1 + armL, 4, 4);
   ctx.fillRect(px + 6, py + 1 + armR, 4, 4);
   
-  // === HEAD ===
-  // Neck
   ctx.fillStyle = skinDark;
   ctx.fillRect(px - 2, py - 12, 4, 3);
   
-  // Head base
   ctx.fillStyle = skin;
   ctx.fillRect(px - 6, py - 24, 12, 13);
   
-  // Hair
   ctx.fillStyle = hair;
   if (dir === 0) {
-    // Facing down - see face
     ctx.fillRect(px - 6, py - 24, 12, 5);
     ctx.fillRect(px - 7, py - 23, 2, 4);
     ctx.fillRect(px + 5, py - 23, 2, 4);
     
-    // Eyes
     ctx.fillStyle = '#fff';
     ctx.fillRect(px - 4, py - 18, 3, 3);
     ctx.fillRect(px + 1, py - 18, 3, 3);
@@ -2002,42 +2058,34 @@ function drawPlayer(px, py) {
     ctx.fillRect(px + 2, py - 17, 2, 2);
     
   } else if (dir === 1) {
-    // Facing up - see back of head
     ctx.fillRect(px - 6, py - 24, 12, 8);
     ctx.fillRect(px - 7, py - 22, 14, 4);
     
   } else if (dir === 2) {
-    // Facing left
     ctx.fillRect(px - 6, py - 24, 10, 5);
     ctx.fillRect(px - 7, py - 23, 3, 5);
     
-    // Eye
     ctx.fillStyle = '#fff';
     ctx.fillRect(px - 4, py - 18, 3, 3);
     ctx.fillStyle = '#2a2a2a';
     ctx.fillRect(px - 4, py - 17, 2, 2);
     
-    // Ear
     ctx.fillStyle = skinDark;
     ctx.fillRect(px + 5, py - 19, 2, 4);
     
   } else {
-    // Facing right
     ctx.fillRect(px - 4, py - 24, 10, 5);
     ctx.fillRect(px + 4, py - 23, 3, 5);
     
-    // Eye
     ctx.fillStyle = '#fff';
     ctx.fillRect(px + 1, py - 18, 3, 3);
     ctx.fillStyle = '#2a2a2a';
     ctx.fillRect(px + 2, py - 17, 2, 2);
     
-    // Ear
     ctx.fillStyle = skinDark;
     ctx.fillRect(px - 7, py - 19, 2, 4);
   }
   
-  // Sprint effect
   if (sprinting) {
     ctx.fillStyle = 'rgba(100,150,200,0.15)';
     ctx.beginPath();
@@ -2050,10 +2098,23 @@ function drawPlayer(px, py) {
 // DISTANCE DISPLAY
 // ═══════════════════════════════════════════════════════════════════
 function updateDistanceDisplay() {
-  const exitDist = getExitDist();
-  const distanceInMeters = Math.round(exitDist * TILE);
   const display = document.getElementById('distance-display');
-  display.innerHTML = `<div style="font-size:14px;color:#7aba8a;letter-spacing:3px;">USCITA</div><div style="font-size:48px;color:#5aba6a;font-weight:bold;text-shadow:0 0 15px rgba(90,170,106,0.8);">${distanceInMeters}</div><div style="font-size:14px;color:#7aba8a;">METRI</div>`;
+  
+  if (level === 1) {
+    // Show distance to robot
+    const robotDist = getRobotDist();
+    const distanceInMeters = Math.round(robotDist * TILE);
+    display.innerHTML = `<div style="font-size:14px;color:#6aaaaa;letter-spacing:3px;">SEGNALE</div><div style="font-size:48px;color:#5aaaaa;font-weight:bold;text-shadow:0 0 15px rgba(100,170,170,0.8);">${distanceInMeters}</div><div style="font-size:14px;color:#6aaaaa;">METRI</div>`;
+    display.style.borderColor = '#5a9aaa';
+    display.style.boxShadow = '0 0 20px rgba(90,154,170,0.3), inset 0 0 10px rgba(90,154,170,0.1)';
+  } else {
+    // Show distance to exit
+    const exitDist = getExitDist();
+    const distanceInMeters = Math.round(exitDist * TILE);
+    display.innerHTML = `<div style="font-size:14px;color:#7aba8a;letter-spacing:3px;">USCITA</div><div style="font-size:48px;color:#5aba6a;font-weight:bold;text-shadow:0 0 15px rgba(90,170,106,0.8);">${distanceInMeters}</div><div style="font-size:14px;color:#7aba8a;">METRI</div>`;
+    display.style.borderColor = '#5a9a6a';
+    display.style.boxShadow = '0 0 20px rgba(90,154,106,0.3), inset 0 0 10px rgba(90,154,106,0.1)';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -2079,7 +2140,6 @@ function gameLoop(timestamp) {
 // GAME FLOW
 // ═══════════════════════════════════════════════════════════════════
 function startGame() {
-  // Seed casuale basato su timestamp per assicurare mappe completamente diverse
   const timeSeed = Date.now();
   Math.random = Math.random.bind(Math);
   
@@ -2088,7 +2148,6 @@ function startGame() {
   document.getElementById('win-screen').classList.add('hidden');
   document.getElementById('finalwin-screen').classList.add('hidden');
   
-  // Aggiornare i colori per il livello attuale
   updateHorrorLevel();
   
   resize();
@@ -2107,13 +2166,6 @@ function startGame() {
   monster.visible = false;
   monster.lastSeen = 0;
   
-  // Reset NPC state
-  npc.monologueStarted = false;
-  npc.monologueIdx = 0;
-  npc.monologueTimer = 0;
-  npc.monologueDone = false;
-  npc.active = false;
-  
   keys = {};
   gameTime = 0;
   gameStartTime = Date.now();
@@ -2127,9 +2179,9 @@ function startGame() {
   document.getElementById('chat-messages').innerHTML = '';
   
   if (level === 1) {
-    setTimeout(() => addChat("È tranquillo qui. Troppo tranquillo.", false), 1000);
-    setTimeout(() => addChat("Nessun rumore di passi. Solo il ronzio.", false), 4000);
-    setTimeout(() => addChat("C'è qualcuno qui. Lo sento. Cerca.", false), 7000);
+    setTimeout(() => addChat("È diverso qui. Più silenzioso.", false), 1000);
+    setTimeout(() => addChat("Nessun mostro. Ma c'è qualcos'altro...", false), 4000);
+    setTimeout(() => addChat("Un segnale. Metallico. Segui il segnale.", false), 7000);
   } else {
     setTimeout(() => addChat("Dove... dove sei finito?", false), 1000);
     setTimeout(() => addChat("Le luci ronzano. Non smettono mai.", false), 4000);
@@ -2170,34 +2222,42 @@ function win() {
   const min = Math.floor(time / 60);
   const sec = time % 60;
   
-  if (level === 1) {
-    // Final victory — game complete
-    const texts = [
-      "La porta si apre. Luce vera. Non fluorescente. Non artificiale. Luce del sole. Ce l'hai fatta.",
-      "L'ultima porta. Dall'altra parte: il mondo reale. Il ronzio si spegne. Il silenzio è dolce.",
-      "Sei uscito. Davvero uscito. Le Backrooms ti lasciano andare. Questa volta.",
-    ];
-    document.getElementById('finalwin-text').textContent = texts[Math.floor(Math.random() * texts.length)];
-    document.getElementById('finalwin-stats').innerHTML =
-      'Tempo totale: ' + min + ':' + sec.toString().padStart(2, '0') + '<br>' +
-      'Passi: ' + player.steps;
-    document.getElementById('finalwin-screen').classList.remove('hidden');
-  } else {
-    // Level 0 complete — go to level 1
-    const texts = [
-      "La porta si apre. Ma dall'altra parte... altri corridoi. Più profondi. Più bui.",
-      "Sei uscito dal primo livello. Ma la discesa non è finita.",
-      "Hai trovato l'uscita. Ma non è la fine. È solo l'inizio.",
-    ];
-    document.getElementById('win-text').textContent = texts[Math.floor(Math.random() * texts.length)];
-    document.getElementById('stats-win').innerHTML = 
-      'Tempo: ' + min + ':' + sec.toString().padStart(2, '0') + '<br>' +
-      'Passi: ' + player.steps + '<br>' +
-      'Livello completato: ' + level;
-    
-    level = 1;
-    document.getElementById('win-screen').classList.remove('hidden');
-  }
+  // Level 0 complete — go to level 1
+  const texts = [
+    "La porta si apre. Ma dall'altra parte... altri corridoi. Più profondi. Più bui.",
+    "Sei uscito dal primo livello. Ma la discesa non è finita.",
+    "Hai trovato l'uscita. Ma non è la fine. È solo l'inizio.",
+  ];
+  document.getElementById('win-text').textContent = texts[Math.floor(Math.random() * texts.length)];
+  document.getElementById('stats-win').innerHTML = 
+    'Tempo: ' + min + ':' + sec.toString().padStart(2, '0') + '<br>' +
+    'Passi: ' + player.steps + '<br>' +
+    'Livello completato: ' + level;
+  
+  level = 1;
+  document.getElementById('win-screen').classList.remove('hidden');
+}
+
+function showFinalScreen() {
+  gameRunning = false;
+  
+  const time = Math.floor((Date.now() - gameStartTime) / 1000);
+  const min = Math.floor(time / 60);
+  const sec = time % 60;
+  
+  const texts = [
+    "Il robot ti ha mostrato la verità. Non c'è uscita. Solo livelli. Sempre più giù. Sempre più oscuri.",
+    "L'Osservatore ha parlato. 847 prima di te. Nessuno è mai uscito davvero. E tu sei il prossimo.",
+    "Le sue parole risuonano nella tua mente. Livelli infiniti. Creature peggiori. L'unica direzione è giù.",
+  ];
+  
+  document.getElementById('finalwin-title').textContent = "È SOLO L'INIZIO";
+  document.getElementById('finalwin-text').textContent = texts[Math.floor(Math.random() * texts.length)];
+  document.getElementById('finalwin-stats').innerHTML =
+    'Tempo totale: ' + min + ':' + sec.toString().padStart(2, '0') + '<br>' +
+    'Passi: ' + player.steps + '<br>' +
+    'Soggetto #847';
+  document.getElementById('finalwin-screen').classList.remove('hidden');
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -2205,7 +2265,8 @@ function win() {
 // ═══════════════════════════════════════════════════════════════════
 document.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
-  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) {
+  const tag = e.target.tagName;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key) && tag !== 'INPUT' && tag !== 'TEXTAREA') {
     e.preventDefault();
   }
 });
