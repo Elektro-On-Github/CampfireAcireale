@@ -346,13 +346,22 @@ html,body{height:100%;overflow:hidden;background:#000}
   <button class="btn" id="retry-btn">RIPROVA</button>
 </div>
 
-<!-- WIN -->
+<!-- WIN (level 0 → next level) -->
 <div id="win-screen" class="screen hidden">
   <h1 style="color:#5a8a5a">USCITO</h1>
   <h2>HAI TROVATO L'USCITA</h2>
   <p id="win-text"></p>
   <div id="stats-win"></div>
   <button class="btn" id="playagain-btn">LIVELLO SUCCESSIVO</button>
+</div>
+
+<!-- FINAL WIN (level 1 → game complete) -->
+<div id="finalwin-screen" class="screen hidden">
+  <h1 style="color:#66ff66;text-shadow:0 0 40px rgba(102,255,102,.6);font-size:52px;letter-spacing:15px;">HAI VINTO</h1>
+  <h2 style="color:#4a8a5a;margin-bottom:20px;">SEI USCITO DALLE BACKROOMS</h2>
+  <p id="finalwin-text" style="color:#7a9a7a;max-width:500px;line-height:2.2;font-size:13px;"></p>
+  <div id="finalwin-stats" style="color:#5a7a5a;font-size:11px;margin:20px 0;line-height:1.8;"></div>
+  <div class="warning-text" style="color:#3a6a4a;margin-top:15px;">La superficie ti aspetta.</div>
 </div>
 
 <!-- GAME -->
@@ -747,13 +756,13 @@ const NPC_MONOLOGUE = [
   "C'era un gruppo. Eravamo cinque. Ora sono solo.",
   "Gli altri... li ha presi. Uno alla volta. Nelle zone più profonde.",
   "No. Non c'è giorno o notte qui. Solo il ronzio. E l'attesa.",
-  "L'uscita... sì, è qui vicino. Ma non fidarti.",
-  "Ogni volta che esci, scendi più in profondità. Non è uscire. È affondare.",
-  "Il prossimo livello... sarà peggio. Molto peggio.",
-  "Lui sarà lì. Ti aspetta già. Lo sento.",
-  "Vai. Esci. Prima che cambi idea.",
-  "...io resto qui. Non ho più la forza di scendere.",
-  "Buona fortuna. Ne avrai bisogno.",
+  "Ma tu... tu ce l'hai fatta. Sei arrivato fin qui.",
+  "L'uscita è qui vicino. Questa è quella vera. L'ultima.",
+  "Io ci ho provato. Tante volte. Ma le gambe non mi reggono più.",
+  "Qualcosa in questo posto ti mangia dentro. Lentamente. Ogni giorno un po' di più.",
+  "Vai. Esci per entrambi. Esci per tutti quelli che non ce l'hanno fatta.",
+  "...io resto qui. Questo è il mio posto ormai.",
+  "Buona fortuna. Racconta al mondo cosa c'è sotto la superficie.",
 ];
 let keys = {};
 let gameRunning = false;
@@ -2077,6 +2086,7 @@ function startGame() {
   document.getElementById('intro-screen').classList.add('hidden');
   document.getElementById('gameover-screen').classList.add('hidden');
   document.getElementById('win-screen').classList.add('hidden');
+  document.getElementById('finalwin-screen').classList.add('hidden');
   
   // Aggiornare i colori per il livello attuale
   updateHorrorLevel();
@@ -2119,7 +2129,7 @@ function startGame() {
   if (level === 1) {
     setTimeout(() => addChat("È tranquillo qui. Troppo tranquillo.", false), 1000);
     setTimeout(() => addChat("Nessun rumore di passi. Solo il ronzio.", false), 4000);
-    setTimeout(() => addChat("Qualcuno è stato qui prima di te...", false), 7000);
+    setTimeout(() => addChat("C'è qualcuno qui. Lo sento. Cerca.", false), 7000);
   } else {
     setTimeout(() => addChat("Dove... dove sei finito?", false), 1000);
     setTimeout(() => addChat("Le luci ronzano. Non smettono mai.", false), 4000);
@@ -2160,21 +2170,34 @@ function win() {
   const min = Math.floor(time / 60);
   const sec = time % 60;
   
-  const texts = [
-    "La porta si apre. Luce. Aria fresca. Sei fuori... per ora. Ma le Backrooms non dimenticano.",
-    "Hai trovato l'uscita. Ma dall'altra parte... altri corridoi. Più profondi. Più bui.",
-    "Sei uscito da Level " + level + ". Il prossimo livello sarà peggio. Molto peggio."
-  ];
-  
-  document.getElementById('win-text').textContent = texts[Math.floor(Math.random() * texts.length)];
-  document.getElementById('stats-win').innerHTML = 
-    'Tempo: ' + min + ':' + sec.toString().padStart(2, '0') + '<br>' +
-    'Passi: ' + player.steps + '<br>' +
-    'Livello completato: ' + level;
-  
-  level++;
-  
-  document.getElementById('win-screen').classList.remove('hidden');
+  if (level === 1) {
+    // Final victory — game complete
+    const texts = [
+      "La porta si apre. Luce vera. Non fluorescente. Non artificiale. Luce del sole. Ce l'hai fatta.",
+      "L'ultima porta. Dall'altra parte: il mondo reale. Il ronzio si spegne. Il silenzio è dolce.",
+      "Sei uscito. Davvero uscito. Le Backrooms ti lasciano andare. Questa volta.",
+    ];
+    document.getElementById('finalwin-text').textContent = texts[Math.floor(Math.random() * texts.length)];
+    document.getElementById('finalwin-stats').innerHTML =
+      'Tempo totale: ' + min + ':' + sec.toString().padStart(2, '0') + '<br>' +
+      'Passi: ' + player.steps;
+    document.getElementById('finalwin-screen').classList.remove('hidden');
+  } else {
+    // Level 0 complete — go to level 1
+    const texts = [
+      "La porta si apre. Ma dall'altra parte... altri corridoi. Più profondi. Più bui.",
+      "Sei uscito dal primo livello. Ma la discesa non è finita.",
+      "Hai trovato l'uscita. Ma non è la fine. È solo l'inizio.",
+    ];
+    document.getElementById('win-text').textContent = texts[Math.floor(Math.random() * texts.length)];
+    document.getElementById('stats-win').innerHTML = 
+      'Tempo: ' + min + ':' + sec.toString().padStart(2, '0') + '<br>' +
+      'Passi: ' + player.steps + '<br>' +
+      'Livello completato: ' + level;
+    
+    level = 1;
+    document.getElementById('win-screen').classList.remove('hidden');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
